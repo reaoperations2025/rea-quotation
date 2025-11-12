@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
+import { Plus, Camera, Upload, Loader2 } from "lucide-react";
 import { Quotation } from "@/types/quotation";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AddQuotationDialogProps {
   onAdd: (quotation: Quotation) => void;
@@ -16,6 +17,9 @@ interface AddQuotationDialogProps {
 export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<Quotation>({
     "QUOTATION NO": "",
     "QUOTATION DATE": "",
@@ -83,6 +87,61 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
     });
   };
 
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const extractQuotationData = async (file: File) => {
+    setIsScanning(true);
+    try {
+      const base64Data = await convertFileToBase64(file);
+      
+      const { data, error } = await supabase.functions.invoke('extract-quotation', {
+        body: { imageData: base64Data }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.data) {
+        setFormData(data.data);
+        toast({
+          title: "Success",
+          description: "Quotation data extracted successfully!",
+        });
+      } else {
+        throw new Error(data.error || "Failed to extract data");
+      }
+    } catch (error) {
+      console.error('Error extracting quotation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to extract quotation data. Please fill manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await extractQuotationData(file);
+    }
+  };
+
+  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      await extractQuotationData(file);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -98,6 +157,52 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
             Fill in the quotation details below. Fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="flex gap-2 p-4 bg-muted rounded-lg">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleCameraCapture}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() => cameraInputRef.current?.click()}
+            disabled={isScanning}
+          >
+            <Camera className="mr-2 h-4 w-4" />
+            Take Photo
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isScanning}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Upload File
+          </Button>
+        </div>
+
+        {isScanning && (
+          <div className="flex items-center justify-center gap-2 p-4 bg-primary/10 rounded-lg">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Extracting quotation data...</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
