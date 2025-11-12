@@ -19,15 +19,15 @@ export const Header = () => {
               <img 
                 src={reaLogo} 
                 alt="REA Advertising Logo" 
-                className="relative h-16 md:h-20 w-auto object-contain drop-shadow-2xl transition-transform group-hover:scale-105"
-                style={{ filter: 'drop-shadow(0 4px 20px rgba(255, 255, 255, 0.3))' }}
+                className="relative h-20 md:h-28 w-auto object-contain drop-shadow-2xl transition-transform group-hover:scale-105"
+                style={{ filter: 'drop-shadow(0 4px 20px rgba(255, 255, 255, 0.5))' }}
               />
             </div>
             
             <div className="hidden md:flex items-center">
-              <div className="w-px h-16 bg-gradient-to-b from-transparent via-white/50 to-transparent"></div>
-              <div className="mx-2 text-white/40 text-2xl font-thin">×</div>
-              <div className="w-px h-16 bg-gradient-to-b from-transparent via-white/50 to-transparent"></div>
+              <div className="w-px h-20 bg-gradient-to-b from-transparent via-white/50 to-transparent"></div>
+              <div className="mx-2 text-white/40 text-3xl font-thin">×</div>
+              <div className="w-px h-20 bg-gradient-to-b from-transparent via-white/50 to-transparent"></div>
             </div>
             
             <div className="relative group">
@@ -35,8 +35,8 @@ export const Header = () => {
               <img 
                 src={animaLogo} 
                 alt="ANIMA Tech Studio Logo" 
-                className="relative h-16 md:h-20 w-auto object-contain drop-shadow-2xl transition-transform group-hover:scale-105"
-                style={{ filter: 'drop-shadow(0 4px 20px rgba(255, 255, 255, 0.2))' }}
+                className="relative h-20 md:h-28 w-auto object-contain drop-shadow-2xl transition-transform group-hover:scale-105"
+                style={{ filter: 'drop-shadow(0 4px 20px rgba(255, 255, 255, 0.3))' }}
               />
             </div>
           </div>
