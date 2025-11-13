@@ -97,12 +97,17 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
   };
 
   const extractQuotationData = async (file: File) => {
-    // Validate file type - only images supported
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    // Validate file type - support images, PDFs, and Excel
+    const validTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'application/pdf',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
     if (!validTypes.includes(file.type)) {
       toast({
         title: "Invalid File Type",
-        description: "Please upload an image (JPG, PNG, or WEBP). PDF files are not supported yet.",
+        description: "Please upload an image (JPG, PNG, WEBP), PDF, or Excel file.",
         variant: "destructive",
       });
       return;
@@ -191,7 +196,7 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf,.xlsx,.xls"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -221,11 +226,11 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
             disabled={isScanning}
           >
             <Upload className="mr-2 h-4 w-4" />
-            Upload Image
+            Upload Document
           </Button>
         </div>
         <p className="text-sm text-muted-foreground px-4">
-          📷 Supported formats: JPG, PNG, WEBP (max 10MB)
+          📄 Supported formats: Images (JPG, PNG, WEBP), PDF, Excel (XLS, XLSX) - max 10MB
         </p>
 
         {isScanning && (

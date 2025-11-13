@@ -14,12 +14,12 @@ serve(async (req) => {
     const { imageData } = await req.json();
     
     if (!imageData) {
-      throw new Error("No image data provided");
+      throw new Error("No file data provided");
     }
 
     // Validate base64 format
     if (!imageData.startsWith('data:')) {
-      throw new Error("Invalid image format. Expected base64 data URL.");
+      throw new Error("Invalid file format. Expected base64 data URL.");
     }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -28,95 +28,17 @@ serve(async (req) => {
     }
 
     const mimeType = imageData.split(';')[0].split(':')[1];
-    console.log('Extracting quotation data from document...', `Type: ${mimeType}, Size: ${imageData.length}`);
+    console.log('Processing document...', `Type: ${mimeType}, Size: ${imageData.length}`);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `You are a quotation data extraction expert. Analyze this document (image or PDF) carefully and extract all quotation information. Return ONLY a valid JSON object with these exact fields:
-{
-  "QUOTATION NO": "quotation number",
-  "QUOTATION DATE": "date in DD/MM/YYYY format",
-  "CLIENT": "client name",
-  "NEW/OLD": "NEW or OLD",
-  "DESCRIPTION 1": "first description",
-  "DESCRIPTION 2": "second description",
-  "QTY": "quantity as number",
-  "UNIT COST": "unit cost as number",
-  "TOTAL AMOUNT": "total amount as number",
-  "SALES  PERSON": "sales person name",
-  "INVOICE NO": "invoice number or empty",
-  "STATUS": "INVOICED, PENDING, or REGRET"
-}
-
-Important instructions:
-- Carefully examine ALL text in the document including headers, tables, and small print
-- If any field is not found, use empty string ""
-- For numeric fields (QTY, UNIT COST, TOTAL AMOUNT), extract only numbers without currency symbols
-- Date format must be DD/MM/YYYY
-- For PDFs, scan all pages if multi-page
-- Return ONLY valid JSON without markdown code blocks or extra text`
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageData
-                }
-              }
-            ]
-          }
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        throw new Error("Rate limit exceeded. Please try again in a moment.");
-      } else if (response.status === 402) {
-        throw new Error("AI credits exhausted. Please add credits to your workspace.");
-      }
-      
-      throw new Error(`AI gateway error: ${response.status} - ${errorText}`);
+    // Handle different file types
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) {
+      return await handleExcelFile(imageData, LOVABLE_API_KEY);
+    } else if (mimeType === 'application/pdf') {
+      return await handlePDFFile(imageData, LOVABLE_API_KEY);
+    } else {
+      return await handleImageFile(imageData, LOVABLE_API_KEY);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("No content in AI response");
-    }
-
-    console.log('AI Response:', content);
-
-    // Extract JSON from the response (it might be wrapped in markdown code blocks)
-    let jsonStr = content.trim();
-    const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
-    }
-
-    console.log('Extracted JSON string:', jsonStr);
-    const extractedData = JSON.parse(jsonStr);
-    console.log('Parsed data:', extractedData);
-
-    return new Response(
-      JSON.stringify({ success: true, data: extractedData }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
   } catch (error) {
     console.error("Error extracting quotation:", error);
     return new Response(
@@ -131,3 +53,183 @@ Important instructions:
     );
   }
 });
+
+async function handleExcelFile(base64Data: string, apiKey: string) {
+  try {
+    console.log('Handling Excel file...');
+    
+    const base64Content = base64Data.split(',')[1];
+    
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          {
+            role: "user",
+            content: `This is an Excel quotation spreadsheet. Extract and return ONLY valid JSON:
+{
+  "QUOTATION NO": "",
+  "QUOTATION DATE": "",
+  "CLIENT": "",
+  "NEW/OLD": "",
+  "DESCRIPTION 1": "",
+  "DESCRIPTION 2": "",
+  "QTY": "",
+  "UNIT COST": "",
+  "TOTAL AMOUNT": "",
+  "SALES  PERSON": "",
+  "INVOICE NO": "",
+  "STATUS": ""
+}
+
+Rules: Empty string if not found, no currency symbols, date as DD/MM/YYYY, return ONLY JSON.
+Base64 sample: ${base64Content.substring(0, 1000)}...`
+          }
+        ],
+      }),
+    });
+
+    return await processAIResponse(response);
+  } catch (error) {
+    console.error("Excel error:", error);
+    throw new Error("Failed to process Excel: " + (error instanceof Error ? error.message : "Unknown"));
+  }
+}
+
+async function handlePDFFile(base64Data: string, apiKey: string) {
+  try {
+    console.log('Handling PDF file...');
+    
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-pro",
+        messages: [
+          {
+            role: "user",
+            content: `Extract quotation data from this PDF. Return ONLY valid JSON:
+{
+  "QUOTATION NO": "",
+  "QUOTATION DATE": "",
+  "CLIENT": "",
+  "NEW/OLD": "",
+  "DESCRIPTION 1": "",
+  "DESCRIPTION 2": "",
+  "QTY": "",
+  "UNIT COST": "",
+  "TOTAL AMOUNT": "",
+  "SALES  PERSON": "",
+  "INVOICE NO": "",
+  "STATUS": ""
+}
+
+Rules: Empty string if not found, no currency symbols, date as DD/MM/YYYY, return ONLY JSON.
+PDF (base64): ${base64Data.substring(0, 2000)}...`
+          }
+        ],
+      }),
+    });
+
+    return await processAIResponse(response);
+  } catch (error) {
+    console.error("PDF error:", error);
+    throw new Error("Failed to process PDF: " + (error instanceof Error ? error.message : "Unknown"));
+  }
+}
+
+async function handleImageFile(base64Data: string, apiKey: string) {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-pro",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Extract quotation data from this image. Return ONLY valid JSON:
+{
+  "QUOTATION NO": "",
+  "QUOTATION DATE": "",
+  "CLIENT": "",
+  "NEW/OLD": "",
+  "DESCRIPTION 1": "",
+  "DESCRIPTION 2": "",
+  "QTY": "",
+  "UNIT COST": "",
+  "TOTAL AMOUNT": "",
+  "SALES  PERSON": "",
+  "INVOICE NO": "",
+  "STATUS": ""
+}
+
+Rules: Empty string if not found, no currency symbols, date as DD/MM/YYYY, return ONLY JSON.`
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: base64Data
+              }
+            }
+          ]
+        }
+      ],
+    }),
+  });
+
+  return await processAIResponse(response);
+}
+
+async function processAIResponse(response: Response) {
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("AI gateway error:", response.status, errorText);
+    
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Please try again in a moment.");
+    } else if (response.status === 402) {
+      throw new Error("AI credits exhausted. Please add credits to your workspace.");
+    }
+    
+    throw new Error(`AI gateway error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+
+  if (!content) {
+    throw new Error("No content in AI response");
+  }
+
+  console.log('AI Response:', content);
+
+  // Extract JSON from the response
+  let jsonStr = content.trim();
+  const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/```\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    jsonStr = jsonMatch[1].trim();
+  }
+
+  console.log('Extracted JSON:', jsonStr);
+  const extractedData = JSON.parse(jsonStr);
+  console.log('Parsed data:', extractedData);
+
+  return new Response(
+    JSON.stringify({ success: true, data: extractedData }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
