@@ -142,9 +142,14 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
 
       if (data.success && data.data) {
         setFormData(data.data);
+        
+        // Count filled vs empty fields
+        const extractedFields = Object.entries(data.data).filter(([key, value]) => value && value.toString().trim() !== "").length;
+        const totalFields = Object.keys(data.data).length;
+        
         toast({
-          title: "Success",
-          description: "Quotation data extracted successfully!",
+          title: "✓ Data Extracted Successfully",
+          description: `Extracted ${extractedFields} out of ${totalFields} fields. Please review and verify the accuracy before saving.`,
         });
       } else {
         throw new Error(data.error || "Failed to extract data");
@@ -234,9 +239,14 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
         </p>
 
         {isScanning && (
-          <div className="flex items-center justify-center gap-2 p-4 bg-primary/10 rounded-lg">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Extracting quotation data...</span>
+          <div className="flex flex-col items-center justify-center gap-3 p-4 bg-primary/10 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm font-medium">Analyzing document with AI...</span>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              Extracting quotation details, client information, and pricing data
+            </p>
           </div>
         )}
 

@@ -71,7 +71,32 @@ async function handleExcelFile(base64Data: string, apiKey: string) {
         messages: [
           {
             role: "user",
-            content: `This is an Excel quotation spreadsheet. Extract and return ONLY valid JSON:
+            content: `You are analyzing an Excel quotation spreadsheet. Extract ALL fields with MAXIMUM ACCURACY:
+
+FIELD DESCRIPTIONS:
+- QUOTATION NO: Unique quotation reference (e.g., "ABA-05-188")
+- QUOTATION DATE: Date in DD/MM/YYYY format
+- CLIENT: Full client/company name
+- NEW/OLD: Client type - "NEW" or "OLD"
+- DESCRIPTION 1: Primary product/service description
+- DESCRIPTION 2: Secondary description (if exists)
+- QTY: Total quantity (sum all line items if multiple)
+- UNIT COST: Price per unit WITHOUT currency symbols
+- TOTAL AMOUNT: Total value WITHOUT currency symbols
+- SALES  PERSON: Salesperson name
+- INVOICE NO: Invoice reference (if invoiced)
+- STATUS: "INVOICED", "PENDING", "REGRET", "APPROVED", or "OPEN"
+
+EXTRACTION RULES:
+1. Look for column headers and match data to correct fields
+2. Check multiple rows for line items - sum quantities if needed
+3. Remove currency symbols from all numbers
+4. Date must be DD/MM/YYYY format
+5. For NEW/OLD: Look for "Client Type" or similar columns
+6. For STATUS: Check for status columns or invoice indicators
+7. Empty string if field not found
+
+Return ONLY this JSON:
 {
   "QUOTATION NO": "",
   "QUOTATION DATE": "",
@@ -87,8 +112,9 @@ async function handleExcelFile(base64Data: string, apiKey: string) {
   "STATUS": ""
 }
 
-Rules: Empty string if not found, no currency symbols, date as DD/MM/YYYY, return ONLY JSON.
-Base64 sample: ${base64Content.substring(0, 1000)}...`
+Excel Data (base64): ${base64Content.substring(0, 1500)}...
+
+CRITICAL: Verify accuracy before returning. Return ONLY JSON.`
           }
         ],
       }),
@@ -116,7 +142,32 @@ async function handlePDFFile(base64Data: string, apiKey: string) {
         messages: [
           {
             role: "user",
-            content: `Extract quotation data from this PDF. Return ONLY valid JSON:
+            content: `You are an expert at extracting quotation data from PDF documents. Analyze this PDF VERY CAREFULLY and extract ALL the following fields with PRECISION:
+
+FIELD DESCRIPTIONS:
+- QUOTATION NO: The unique quotation reference number (e.g., "ABA-05-188", "QTN-2024-001")
+- QUOTATION DATE: The date when quotation was issued (format: DD/MM/YYYY, e.g., "24/10/2025")
+- CLIENT: Full company/client name exactly as written
+- NEW/OLD: Indicates if client is "NEW" or "OLD" (existing customer)
+- DESCRIPTION 1: Main product/service description or first line item
+- DESCRIPTION 2: Additional description or second line item (if any)
+- QTY: Quantity of items/services (look for multiple items and sum them, or the main quantity)
+- UNIT COST: Price per unit WITHOUT currency symbols (e.g., "12000.00" not "AED 12000")
+- TOTAL AMOUNT: Total quotation value WITHOUT currency symbols
+- SALES  PERSON: Name of salesperson/account manager
+- INVOICE NO: Invoice number if quotation has been invoiced (often blank for new quotes)
+- STATUS: Current status - look for words like "INVOICED", "PENDING", "REGRET", "APPROVED", "OPEN"
+
+EXTRACTION RULES:
+1. Read EVERY line of the PDF carefully - data may be in headers, tables, or footer
+2. For NEW/OLD: Look for labels like "Client Type", "Customer Status", or infer from context
+3. For STATUS: Look for status labels, approval stamps, or payment indicators
+4. For INVOICE NO: Only fill if there's a clear invoice reference
+5. For numeric fields: Remove ALL currency symbols (AED, $, ₹, etc.) and keep only numbers with decimals
+6. If a field is truly not present, use empty string ""
+7. Double-check calculations: TOTAL AMOUNT should equal QTY × UNIT COST (if not, use the explicit total shown)
+
+Return ONLY this JSON structure with accurate data:
 {
   "QUOTATION NO": "",
   "QUOTATION DATE": "",
@@ -132,8 +183,9 @@ async function handlePDFFile(base64Data: string, apiKey: string) {
   "STATUS": ""
 }
 
-Rules: Empty string if not found, no currency symbols, date as DD/MM/YYYY, return ONLY JSON.
-PDF (base64): ${base64Data.substring(0, 2000)}...`
+PDF Data (base64): ${base64Data.substring(0, 3000)}...
+
+IMPORTANT: Verify your extraction is accurate before returning. Return ONLY the JSON object.`
           }
         ],
       }),
@@ -161,7 +213,32 @@ async function handleImageFile(base64Data: string, apiKey: string) {
           content: [
             {
               type: "text",
-              text: `Extract quotation data from this image. Return ONLY valid JSON:
+              text: `You are an expert at extracting quotation data from images. Analyze this image VERY CAREFULLY and extract ALL the following fields with PRECISION:
+
+FIELD DESCRIPTIONS:
+- QUOTATION NO: The unique quotation reference number (e.g., "ABA-05-188", "QTN-2024-001")
+- QUOTATION DATE: The date when quotation was issued (format: DD/MM/YYYY)
+- CLIENT: Full company/client name exactly as written
+- NEW/OLD: Indicates if client is "NEW" or "OLD" (existing customer) - look for this label
+- DESCRIPTION 1: Main product/service description or first line item
+- DESCRIPTION 2: Additional description or second line item (if any)
+- QTY: Quantity of items/services (check all line items carefully)
+- UNIT COST: Price per unit WITHOUT currency symbols (e.g., "12000.00" not "AED 12000")
+- TOTAL AMOUNT: Total quotation value WITHOUT currency symbols
+- SALES  PERSON: Name of salesperson/account manager
+- INVOICE NO: Invoice number if quotation has been invoiced
+- STATUS: Current status - "INVOICED", "PENDING", "REGRET", "APPROVED", or "OPEN"
+
+EXTRACTION RULES:
+1. Read EVERY text element in the image - look in headers, tables, margins, and footers
+2. For NEW/OLD: Check for explicit labels or client status indicators
+3. For STATUS: Look for status stamps, approval marks, or payment indicators
+4. For QTY: Add up all quantities if multiple line items exist
+5. Remove ALL currency symbols (AED, $, ₹, etc.) from numeric fields
+6. If field not present after thorough search, use empty string ""
+7. Verify TOTAL AMOUNT = QTY × UNIT COST (or use explicit total if shown differently)
+
+Return ONLY this JSON:
 {
   "QUOTATION NO": "",
   "QUOTATION DATE": "",
@@ -177,7 +254,7 @@ async function handleImageFile(base64Data: string, apiKey: string) {
   "STATUS": ""
 }
 
-Rules: Empty string if not found, no currency symbols, date as DD/MM/YYYY, return ONLY JSON.`
+CRITICAL: Double-check your extraction for accuracy. Return ONLY the JSON object.`
             },
             {
               type: "image_url",
