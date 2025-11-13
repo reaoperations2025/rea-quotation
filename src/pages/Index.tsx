@@ -91,6 +91,16 @@ const Index = () => {
     return Array.from(new Set(quotations.map((q) => q["SALES  PERSON"]).filter(p => p && p.trim() !== ""))).sort();
   }, [quotations]);
 
+  // Helper function to parse date strings
+  const parseDate = (dateStr: string): Date => {
+    const [day, month, year] = dateStr.split("-");
+    const monthMap: { [key: string]: number } = {
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+    };
+    return new Date(2000 + parseInt(year), monthMap[month], parseInt(day));
+  };
+
   // Filter quotations
   const filteredQuotations = useMemo(() => {
     return quotations.filter((quotation) => {
@@ -235,15 +245,6 @@ const Index = () => {
       title: "Export Successful",
       description: `Exported ${filteredQuotations.length} quotations to PDF.`,
     });
-  };
-
-  const parseDate = (dateStr: string): Date => {
-    const [day, month, year] = dateStr.split("-");
-    const monthMap: { [key: string]: number } = {
-      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-    };
-    return new Date(2000 + parseInt(year), monthMap[month], parseInt(day));
   };
 
   if (loading) {
