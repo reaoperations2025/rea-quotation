@@ -12,9 +12,10 @@ import { Quotation } from "@/types/quotation";
 import quotationsData from "@/data/quotations.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const Index = () => {
   const { toast } = useToast();
@@ -35,6 +36,7 @@ const Index = () => {
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState("date-newest");
   const itemsPerPage = 50;
 
   // Check authentication
@@ -165,6 +167,40 @@ const Index = () => {
       return true;
     });
   }, [quotations, filters, searchQuery]);
+
+  // Sort quotations
+  const sortedQuotations = useMemo(() => {
+    const sorted = [...filteredQuotations];
+    
+    switch (sortBy) {
+      case "date-newest":
+        return sorted.sort((a, b) => parseDate(b["QUOTATION DATE"]).getTime() - parseDate(a["QUOTATION DATE"]).getTime());
+      case "date-oldest":
+        return sorted.sort((a, b) => parseDate(a["QUOTATION DATE"]).getTime() - parseDate(b["QUOTATION DATE"]).getTime());
+      case "amount-highest":
+        return sorted.sort((a, b) => {
+          const amountA = parseFloat(a["TOTAL AMOUNT"].replace(/,/g, "")) || 0;
+          const amountB = parseFloat(b["TOTAL AMOUNT"].replace(/,/g, "")) || 0;
+          return amountB - amountA;
+        });
+      case "amount-lowest":
+        return sorted.sort((a, b) => {
+          const amountA = parseFloat(a["TOTAL AMOUNT"].replace(/,/g, "")) || 0;
+          const amountB = parseFloat(b["TOTAL AMOUNT"].replace(/,/g, "")) || 0;
+          return amountA - amountB;
+        });
+      case "client-az":
+        return sorted.sort((a, b) => a.CLIENT.localeCompare(b.CLIENT));
+      case "client-za":
+        return sorted.sort((a, b) => b.CLIENT.localeCompare(a.CLIENT));
+      case "status":
+        return sorted.sort((a, b) => a.STATUS.localeCompare(b.STATUS));
+      case "quotation-no":
+        return sorted.sort((a, b) => a["QUOTATION NO"].localeCompare(b["QUOTATION NO"]));
+      default:
+        return sorted;
+    }
+  }, [filteredQuotations, sortBy]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -318,9 +354,29 @@ const Index = () => {
           uniqueSalesPeople={uniqueSalesPeople}
         />
 
+        <div className="mt-6 mb-4 flex items-center gap-3">
+          <ArrowUpDown className="h-5 w-5 text-muted-foreground" />
+          <label className="text-sm font-medium text-foreground">Sort by:</label>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date-newest">Date (Newest First)</SelectItem>
+              <SelectItem value="date-oldest">Date (Oldest First)</SelectItem>
+              <SelectItem value="amount-highest">Amount (Highest First)</SelectItem>
+              <SelectItem value="amount-lowest">Amount (Lowest First)</SelectItem>
+              <SelectItem value="client-az">Client (A-Z)</SelectItem>
+              <SelectItem value="client-za">Client (Z-A)</SelectItem>
+              <SelectItem value="quotation-no">Quotation Number</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="mt-6">
             <QuotationTable
-              quotations={filteredQuotations}
+              quotations={sortedQuotations}
               currentPage={currentPage}
               itemsPerPage={itemsPerPage}
               onPageChange={setCurrentPage}
