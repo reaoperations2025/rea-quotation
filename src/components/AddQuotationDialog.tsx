@@ -5,10 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Camera, Upload, Loader2 } from "lucide-react";
+import { Plus, Camera, Upload, Loader2, Trash2 } from "lucide-react";
 import { Quotation } from "@/types/quotation";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+interface LineItem {
+  id: string;
+  description: string;
+  qty: string;
+  unitCost: string;
+  lineTotal: string;
+}
 
 interface AddQuotationDialogProps {
   onAdd: (quotation: Quotation) => void;
@@ -20,20 +28,61 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
   const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [formData, setFormData] = useState<Quotation>({
+  const [lineItems, setLineItems] = useState<LineItem[]>([
+    { id: "1", description: "", qty: "", unitCost: "", lineTotal: "" }
+  ]);
+  const [formData, setFormData] = useState<Omit<Quotation, "DESCRIPTION 1" | "DESCRIPTION 2" | "QTY" | "UNIT COST" | "TOTAL AMOUNT">>({
     "QUOTATION NO": "",
     "QUOTATION DATE": "",
     "CLIENT": "",
     "NEW/OLD": "NEW",
-    "DESCRIPTION 1": "",
-    "DESCRIPTION 2": "",
-    "QTY": "",
-    "UNIT COST": "",
-    "TOTAL AMOUNT": "",
     "SALES  PERSON": "",
     "INVOICE NO": "",
     "STATUS": "PENDING",
   });
+
+  const addLineItem = () => {
+    setLineItems([...lineItems, { 
+      id: Date.now().toString(), 
+      description: "", 
+      qty: "", 
+      unitCost: "", 
+      lineTotal: "" 
+    }]);
+  };
+
+  const removeLineItem = (id: string) => {
+    if (lineItems.length > 1) {
+      setLineItems(lineItems.filter(item => item.id !== id));
+    }
+  };
+
+  const updateLineItem = (id: string, field: keyof Omit<LineItem, 'id'>, value: string) => {
+    setLineItems(prevItems => {
+      return prevItems.map(item => {
+        if (item.id !== id) return item;
+        
+        const updated = { ...item, [field]: value };
+        
+        // Auto-calculate line total
+        if (field === "qty" || field === "unitCost") {
+          const qty = parseFloat((field === "qty" ? value : updated.qty).replace(/,/g, "")) || 0;
+          const unitCost = parseFloat((field === "unitCost" ? value : updated.unitCost).replace(/,/g, "")) || 0;
+          const total = qty * unitCost;
+          updated.lineTotal = total > 0 ? total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+        }
+        
+        return updated;
+      });
+    });
+  };
+
+  const calculateTotalAmount = () => {
+    return lineItems.reduce((sum, item) => {
+      const lineTotal = parseFloat(item.lineTotal.replace(/,/g, "")) || 0;
+      return sum + lineTotal;
+    }, 0);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,10 +96,28 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
       return;
     }
 
-    onAdd(formData);
+    // Format line items into description fields
+    const descriptions = lineItems
+      .filter(item => item.description.trim())
+      .map(item => `${item.description} (Qty: ${item.qty}, Unit: ${item.unitCost})`)
+      .join(" | ");
+    
+    const totalQty = lineItems.reduce((sum, item) => sum + (parseFloat(item.qty) || 0), 0).toString();
+    const totalAmount = calculateTotalAmount();
+
+    const quotation: Quotation = {
+      ...formData,
+      "DESCRIPTION 1": descriptions.substring(0, 200) || "",
+      "DESCRIPTION 2": descriptions.substring(200, 400) || "",
+      "QTY": totalQty,
+      "UNIT COST": lineItems.length > 0 ? lineItems[0].unitCost : "",
+      "TOTAL AMOUNT": totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    };
+
+    onAdd(quotation);
     toast({
       title: "Quotation Added",
-      description: `Quotation ${formData["QUOTATION NO"]} has been added successfully.`,
+      description: `Quotation ${formData["QUOTATION NO"]} with ${lineItems.length} item(s) has been added successfully.`,
     });
     
     // Reset form
@@ -59,32 +126,16 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
       "QUOTATION DATE": "",
       "CLIENT": "",
       "NEW/OLD": "NEW",
-      "DESCRIPTION 1": "",
-      "DESCRIPTION 2": "",
-      "QTY": "",
-      "UNIT COST": "",
-      "TOTAL AMOUNT": "",
       "SALES  PERSON": "",
       "INVOICE NO": "",
       "STATUS": "PENDING",
     });
+    setLineItems([{ id: "1", description: "", qty: "", unitCost: "", lineTotal: "" }]);
     setOpen(false);
   };
 
-  const handleChange = (field: keyof Quotation, value: string) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate total amount if qty and unit cost are present
-      if (field === "QTY" || field === "UNIT COST") {
-        const qty = parseFloat((field === "QTY" ? value : updated.QTY).replace(/,/g, "")) || 0;
-        const unitCost = parseFloat((field === "UNIT COST" ? value : updated["UNIT COST"]).replace(/,/g, "")) || 0;
-        const total = qty * unitCost;
-        updated["TOTAL AMOUNT"] = total > 0 ? total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-      }
-      
-      return updated;
-    });
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const convertFileToBase64 = (file: File): Promise<string> => {
@@ -305,60 +356,6 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
                 value={formData["SALES  PERSON"]}
                 onChange={(e) => handleChange("SALES  PERSON", e.target.value)}
                 placeholder="Sales person name"
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="desc1">Description 1</Label>
-              <Textarea
-                id="desc1"
-                value={formData["DESCRIPTION 1"]}
-                onChange={(e) => handleChange("DESCRIPTION 1", e.target.value)}
-                placeholder="Main description"
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="desc2">Description 2</Label>
-              <Textarea
-                id="desc2"
-                value={formData["DESCRIPTION 2"]}
-                onChange={(e) => handleChange("DESCRIPTION 2", e.target.value)}
-                placeholder="Additional details"
-                rows={2}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="qty">Quantity</Label>
-              <Input
-                id="qty"
-                value={formData.QTY}
-                onChange={(e) => handleChange("QTY", e.target.value)}
-                placeholder="e.g., 100"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="unitCost">Unit Cost (AED)</Label>
-              <Input
-                id="unitCost"
-                type="number"
-                step="0.01"
-                value={formData["UNIT COST"]}
-                onChange={(e) => handleChange("UNIT COST", e.target.value)}
-                placeholder="e.g., 150.00"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="totalAmount">Total Amount (AED)</Label>
-              <Input
-                id="totalAmount"
-                value={formData["TOTAL AMOUNT"]}
-                onChange={(e) => handleChange("TOTAL AMOUNT", e.target.value)}
-                placeholder="Auto-calculated or manual"
               />
             </div>
 
