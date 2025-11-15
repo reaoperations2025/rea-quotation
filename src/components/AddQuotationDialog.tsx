@@ -385,6 +385,92 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
             </div>
           </div>
 
+          <div className="space-y-4 pt-4 border-t">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-semibold">Line Items</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addLineItem}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Item
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {lineItems.map((item, index) => (
+                <div key={item.id} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Item {index + 1}</span>
+                    {lineItems.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeLineItem(item.id)}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div className="md:col-span-2 space-y-2">
+                      <Label htmlFor={`desc-${item.id}`}>Description</Label>
+                      <Textarea
+                        id={`desc-${item.id}`}
+                        value={item.description}
+                        onChange={(e) => updateLineItem(item.id, "description", e.target.value)}
+                        placeholder="Item description"
+                        rows={2}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`qty-${item.id}`}>Quantity</Label>
+                      <Input
+                        id={`qty-${item.id}`}
+                        type="text"
+                        value={item.qty}
+                        onChange={(e) => updateLineItem(item.id, "qty", e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor={`cost-${item.id}`}>Unit Cost</Label>
+                      <Input
+                        id={`cost-${item.id}`}
+                        type="text"
+                        value={item.unitCost}
+                        onChange={(e) => updateLineItem(item.id, "unitCost", e.target.value)}
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  
+                  {item.lineTotal && (
+                    <div className="text-right">
+                      <span className="text-sm font-medium">Line Total: </span>
+                      <span className="text-lg font-bold text-brand-teal">{item.lineTotal}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end p-4 bg-muted rounded-lg">
+              <div className="text-right">
+                <span className="text-sm text-muted-foreground">Grand Total: </span>
+                <span className="text-2xl font-bold text-brand-teal">
+                  {calculateTotalAmount().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
