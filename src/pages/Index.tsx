@@ -9,7 +9,7 @@ import { QuotationTable } from "@/components/QuotationTable";
 import { AddQuotationDialog } from "@/components/AddQuotationDialog";
 import { EditQuotationDialog } from "@/components/EditQuotationDialog";
 import { Quotation } from "@/types/quotation";
-import quotationsData from "@/data/quotations.json";
+import quotationsData from "@/data/quotations-full.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown } from "lucide-react";
@@ -161,6 +161,62 @@ const Index = () => {
 
     loadQuotations();
 
+    // Set up realtime subscription for live updates
+    const channel = supabase
+      .channel('quotations-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quotations'
+        },
+        (payload) => {
+          console.log('Realtime change:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newQuotation: Quotation = {
+              "QUOTATION NO": payload.new.quotation_no,
+              "QUOTATION DATE": payload.new.quotation_date,
+              "CLIENT": payload.new.client,
+              "NEW/OLD": payload.new.new_old,
+              "DESCRIPTION 1": payload.new.description_1 || "",
+              "DESCRIPTION 2": payload.new.description_2 || "",
+              "QTY": payload.new.qty || "",
+              "UNIT COST": payload.new.unit_cost || "",
+              "TOTAL AMOUNT": payload.new.total_amount || "",
+              "SALES  PERSON": payload.new.sales_person || "",
+              "INVOICE NO": payload.new.invoice_no || "",
+              "STATUS": payload.new.status,
+            };
+            setQuotations(prev => [newQuotation, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedQuotation: Quotation = {
+              "QUOTATION NO": payload.new.quotation_no,
+              "QUOTATION DATE": payload.new.quotation_date,
+              "CLIENT": payload.new.client,
+              "NEW/OLD": payload.new.new_old,
+              "DESCRIPTION 1": payload.new.description_1 || "",
+              "DESCRIPTION 2": payload.new.description_2 || "",
+              "QTY": payload.new.qty || "",
+              "UNIT COST": payload.new.unit_cost || "",
+              "TOTAL AMOUNT": payload.new.total_amount || "",
+              "SALES  PERSON": payload.new.sales_person || "",
+              "INVOICE NO": payload.new.invoice_no || "",
+              "STATUS": payload.new.status,
+            };
+            setQuotations(prev =>
+              prev.map(q => q["QUOTATION NO"] === payload.old.quotation_no ? updatedQuotation : q)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setQuotations(prev =>
+              prev.filter(q => q["QUOTATION NO"] !== payload.old.quotation_no)
+            );
+          }
+        }
+      )
+      .subscribe();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         navigate("/auth");
@@ -169,7 +225,10 @@ const Index = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      supabase.removeChannel(channel);
+      subscription.unsubscribe();
+    };
   }, [navigate, toast]);
 
   // Get unique values for filters (excluding empty strings)
@@ -357,7 +416,7 @@ const Index = () => {
 
       if (error) throw error;
 
-      setQuotations(prev => [newQuotation, ...prev]);
+      // Realtime will handle updating the state
       toast({
         title: "Success",
         description: "Quotation saved to database",
@@ -398,16 +457,11 @@ const Index = () => {
           invoice_no: updatedQuotation["INVOICE NO"],
           status: updatedQuotation.STATUS,
         })
-        .eq('user_id', user.id)
         .eq('quotation_no', originalQuotationNo);
 
       if (error) throw error;
 
-      setQuotations(prev => 
-        prev.map(q => 
-          q["QUOTATION NO"] === originalQuotationNo ? updatedQuotation : q
-        )
-      );
+      // Realtime will handle updating the state
       toast({
         title: "Success",
         description: "Quotation updated in database",
@@ -431,12 +485,11 @@ const Index = () => {
         const { error } = await supabase
           .from('quotations')
           .delete()
-          .eq('user_id', user.id)
           .eq('quotation_no', quotation["QUOTATION NO"]);
 
         if (error) throw error;
 
-        setQuotations((prev) => prev.filter((q) => q["QUOTATION NO"] !== quotation["QUOTATION NO"]));
+        // Realtime will handle updating the state
         toast({
           title: "Deleted",
           description: "Quotation deleted from database",
