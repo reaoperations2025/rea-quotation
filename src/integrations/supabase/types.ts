@@ -38,6 +38,63 @@ export type Database = {
         }
         Relationships: []
       }
+      quotations: {
+        Row: {
+          client: string
+          created_at: string
+          description_1: string | null
+          description_2: string | null
+          id: string
+          invoice_no: string | null
+          new_old: string
+          qty: string | null
+          quotation_date: string
+          quotation_no: string
+          sales_person: string | null
+          status: string
+          total_amount: string | null
+          unit_cost: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client: string
+          created_at?: string
+          description_1?: string | null
+          description_2?: string | null
+          id?: string
+          invoice_no?: string | null
+          new_old: string
+          qty?: string | null
+          quotation_date: string
+          quotation_no: string
+          sales_person?: string | null
+          status?: string
+          total_amount?: string | null
+          unit_cost?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client?: string
+          created_at?: string
+          description_1?: string | null
+          description_2?: string | null
+          id?: string
+          invoice_no?: string | null
+          new_old?: string
+          qty?: string | null
+          quotation_date?: string
+          quotation_no?: string
+          sales_person?: string | null
+          status?: string
+          total_amount?: string | null
+          unit_cost?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const Index = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [quotations, setQuotations] = useState<Quotation[]>(quotationsData as Quotation[]);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -39,46 +39,59 @@ const Index = () => {
   const [sortBy, setSortBy] = useState("date-newest");
   const itemsPerPage = 50;
 
-  // Check authentication
+  // Check authentication and load quotations
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const loadQuotations = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate("/auth");
-      } else {
-        setLoading(false);
+        return;
       }
-    });
+
+      const { data, error } = await supabase
+        .from('quotations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading quotations:', error);
+        toast({
+          title: "Error loading quotations",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else if (data) {
+        const formattedQuotations: Quotation[] = data.map(q => ({
+          "QUOTATION NO": q.quotation_no,
+          "QUOTATION DATE": q.quotation_date,
+          "CLIENT": q.client,
+          "NEW/OLD": q.new_old,
+          "DESCRIPTION 1": q.description_1 || "",
+          "DESCRIPTION 2": q.description_2 || "",
+          "QTY": q.qty || "",
+          "UNIT COST": q.unit_cost || "",
+          "TOTAL AMOUNT": q.total_amount || "",
+          "SALES  PERSON": q.sales_person || "",
+          "INVOICE NO": q.invoice_no || "",
+          "STATUS": q.status,
+        }));
+        setQuotations(formattedQuotations);
+      }
+      setLoading(false);
+    };
+
+    loadQuotations();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!session) {
         navigate("/auth");
       } else {
-        setLoading(false);
+        loadQuotations();
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  // Save to localStorage whenever quotations change
-  useEffect(() => {
-    localStorage.setItem('quotations', JSON.stringify(quotations));
-  }, [quotations]);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('quotations');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setQuotations(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to load saved quotations');
-      }
-    }
-  }, []);
+  }, [navigate, toast]);
 
   // Get unique values for filters (excluding empty strings)
   const uniqueClients = useMemo(() => {
@@ -240,8 +253,44 @@ const Index = () => {
     setCurrentPage(1);
   };
 
-  const handleAddQuotation = (newQuotation: Quotation) => {
-    setQuotations(prev => [newQuotation, ...prev]);
+  const handleAddQuotation = async (newQuotation: Quotation) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('quotations')
+        .insert({
+          user_id: user.id,
+          quotation_no: newQuotation["QUOTATION NO"],
+          quotation_date: newQuotation["QUOTATION DATE"],
+          client: newQuotation.CLIENT,
+          new_old: newQuotation["NEW/OLD"],
+          description_1: newQuotation["DESCRIPTION 1"],
+          description_2: newQuotation["DESCRIPTION 2"],
+          qty: newQuotation.QTY,
+          unit_cost: newQuotation["UNIT COST"],
+          total_amount: newQuotation["TOTAL AMOUNT"],
+          sales_person: newQuotation["SALES  PERSON"],
+          invoice_no: newQuotation["INVOICE NO"],
+          status: newQuotation.STATUS,
+        });
+
+      if (error) throw error;
+
+      setQuotations(prev => [newQuotation, ...prev]);
+      toast({
+        title: "Success",
+        description: "Quotation saved to database",
+      });
+    } catch (error: any) {
+      console.error('Error saving quotation:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save quotation",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleEditQuotation = (quotation: Quotation) => {
@@ -249,21 +298,78 @@ const Index = () => {
     setEditDialogOpen(true);
   };
 
-  const handleSaveEdit = (updatedQuotation: Quotation, originalQuotationNo: string) => {
-    setQuotations(prev => 
-      prev.map(q => 
-        q["QUOTATION NO"] === originalQuotationNo ? updatedQuotation : q
-      )
-    );
+  const handleSaveEdit = async (updatedQuotation: Quotation, originalQuotationNo: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from('quotations')
+        .update({
+          quotation_no: updatedQuotation["QUOTATION NO"],
+          quotation_date: updatedQuotation["QUOTATION DATE"],
+          client: updatedQuotation.CLIENT,
+          new_old: updatedQuotation["NEW/OLD"],
+          description_1: updatedQuotation["DESCRIPTION 1"],
+          description_2: updatedQuotation["DESCRIPTION 2"],
+          qty: updatedQuotation.QTY,
+          unit_cost: updatedQuotation["UNIT COST"],
+          total_amount: updatedQuotation["TOTAL AMOUNT"],
+          sales_person: updatedQuotation["SALES  PERSON"],
+          invoice_no: updatedQuotation["INVOICE NO"],
+          status: updatedQuotation.STATUS,
+        })
+        .eq('user_id', user.id)
+        .eq('quotation_no', originalQuotationNo);
+
+      if (error) throw error;
+
+      setQuotations(prev => 
+        prev.map(q => 
+          q["QUOTATION NO"] === originalQuotationNo ? updatedQuotation : q
+        )
+      );
+      toast({
+        title: "Success",
+        description: "Quotation updated in database",
+      });
+    } catch (error: any) {
+      console.error('Error updating quotation:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update quotation",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteQuotation = (quotation: Quotation) => {
+  const handleDeleteQuotation = async (quotation: Quotation) => {
     if (window.confirm(`Are you sure you want to delete quotation ${quotation["QUOTATION NO"]}?`)) {
-      setQuotations((prev) => prev.filter((q) => q["QUOTATION NO"] !== quotation["QUOTATION NO"]));
-      toast({
-        title: "Deleted",
-        description: "Quotation deleted successfully",
-      });
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Not authenticated");
+
+        const { error } = await supabase
+          .from('quotations')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('quotation_no', quotation["QUOTATION NO"]);
+
+        if (error) throw error;
+
+        setQuotations((prev) => prev.filter((q) => q["QUOTATION NO"] !== quotation["QUOTATION NO"]));
+        toast({
+          title: "Deleted",
+          description: "Quotation deleted from database",
+        });
+      } catch (error: any) {
+        console.error('Error deleting quotation:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to delete quotation",
+          variant: "destructive",
+        });
+      }
     }
   };
 
