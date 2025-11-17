@@ -91,19 +91,38 @@ const Index = () => {
                   status: q.STATUS,
                 }));
 
-                const { error: insertError } = await supabase
-                  .from('quotations')
-                  .insert(insertData);
+                // Batch insert in chunks of 500 to avoid limits
+                const batchSize = 500;
+                let migratedCount = 0;
+                
+                for (let i = 0; i < insertData.length; i += batchSize) {
+                  const batch = insertData.slice(i, i + batchSize);
+                  const { error: insertError } = await supabase
+                    .from('quotations')
+                    .insert(batch);
 
-                if (insertError) {
-                  console.error('Error migrating quotations:', insertError);
-                } else {
+                  if (insertError) {
+                    console.error(`Error migrating batch ${i / batchSize + 1}:`, insertError);
+                    break;
+                  } else {
+                    migratedCount += batch.length;
+                    console.log(`Migrated ${migratedCount} of ${insertData.length} quotations...`);
+                  }
+                }
+
+                if (migratedCount === insertData.length) {
                   setQuotations(localQuotations);
                   toast({
                     title: "Migration Complete",
-                    description: `Migrated ${localQuotations.length} quotations to database`,
+                    description: `Migrated all ${migratedCount} quotations to database`,
                   });
                   localStorage.removeItem('quotations');
+                } else {
+                  toast({
+                    title: "Partial Migration",
+                    description: `Migrated ${migratedCount} of ${insertData.length} quotations`,
+                    variant: "destructive",
+                  });
                 }
               }
             }
