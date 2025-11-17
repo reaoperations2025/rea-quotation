@@ -37,7 +37,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("date-newest");
-  const itemsPerPage = 50;
+  const itemsPerPage = 10000; // Show all quotations
 
   // Check authentication and load quotations
   useEffect(() => {
