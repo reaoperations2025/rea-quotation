@@ -68,7 +68,7 @@ const Index = () => {
       // Clear localStorage
       localStorage.removeItem('quotations');
       
-      // Database is empty or has data
+      // Set quotations from database only
       if (data && data.length > 0) {
         const formattedQuotations: Quotation[] = data.map(q => ({
           "QUOTATION NO": q.quotation_no,
@@ -85,6 +85,9 @@ const Index = () => {
           "STATUS": q.status,
         }));
         setQuotations(formattedQuotations);
+      } else {
+        // Database is empty - show empty state
+        setQuotations([]);
       }
       setLoading(false);
     };
