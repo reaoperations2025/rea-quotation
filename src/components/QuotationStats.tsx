@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, CheckCircle, XCircle, Coins } from "lucide-react";
+import { CheckCircle, XCircle, Coins } from "lucide-react";
 
 interface QuotationStatsProps {
   totalQuotations: number;
@@ -15,17 +15,7 @@ export const QuotationStats = ({
   regretCount,
 }: QuotationStatsProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <Card className="border-l-4 border-l-brand-teal shadow-md hover:shadow-lg transition-shadow">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Quotations</CardTitle>
-          <FileText className="h-5 w-5 text-brand-teal" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-brand-teal">{totalQuotations}</div>
-        </CardContent>
-      </Card>
-
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       <Card className="border-l-4 border-l-brand-blue shadow-md hover:shadow-lg transition-shadow">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Amount (AED)</CardTitle>
