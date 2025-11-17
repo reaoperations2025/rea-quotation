@@ -64,70 +64,79 @@ const Index = () => {
         return;
       }
 
-      // Migrate from localStorage if database is empty
+      // Migrate from localStorage or JSON file if database is empty
       if (!data || data.length === 0) {
+        let localQuotations: Quotation[] = [];
+        
+        // Try localStorage first
         const savedLocal = localStorage.getItem('quotations');
         if (savedLocal) {
           try {
-            const localQuotations: Quotation[] = JSON.parse(savedLocal);
-            if (Array.isArray(localQuotations) && localQuotations.length > 0) {
-              console.log('Migrating quotations from localStorage to database...');
-              
-              const { data: { user } } = await supabase.auth.getUser();
-              if (user) {
-                const insertData = localQuotations.map(q => ({
-                  user_id: user.id,
-                  quotation_no: q["QUOTATION NO"],
-                  quotation_date: q["QUOTATION DATE"],
-                  client: q.CLIENT,
-                  new_old: q["NEW/OLD"],
-                  description_1: q["DESCRIPTION 1"],
-                  description_2: q["DESCRIPTION 2"],
-                  qty: q.QTY,
-                  unit_cost: q["UNIT COST"],
-                  total_amount: q["TOTAL AMOUNT"],
-                  sales_person: q["SALES  PERSON"],
-                  invoice_no: q["INVOICE NO"],
-                  status: q.STATUS,
-                }));
+            localQuotations = JSON.parse(savedLocal);
+          } catch (e) {
+            console.error('Failed to parse localStorage:', e);
+          }
+        }
+        
+        // If localStorage is empty, use JSON file
+        if (localQuotations.length === 0) {
+          localQuotations = quotationsData as Quotation[];
+        }
 
-                // Batch insert in chunks of 500 to avoid limits
-                const batchSize = 500;
-                let migratedCount = 0;
-                
-                for (let i = 0; i < insertData.length; i += batchSize) {
-                  const batch = insertData.slice(i, i + batchSize);
-                  const { error: insertError } = await supabase
-                    .from('quotations')
-                    .insert(batch);
+        if (localQuotations.length > 0) {
+          console.log('Migrating quotations to database...');
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const insertData = localQuotations.map(q => ({
+              user_id: user.id,
+              quotation_no: q["QUOTATION NO"],
+              quotation_date: q["QUOTATION DATE"],
+              client: q.CLIENT,
+              new_old: q["NEW/OLD"],
+              description_1: q["DESCRIPTION 1"],
+              description_2: q["DESCRIPTION 2"],
+              qty: q.QTY,
+              unit_cost: q["UNIT COST"],
+              total_amount: q["TOTAL AMOUNT"],
+              sales_person: q["SALES  PERSON"],
+              invoice_no: q["INVOICE NO"],
+              status: q.STATUS,
+            }));
 
-                  if (insertError) {
-                    console.error(`Error migrating batch ${i / batchSize + 1}:`, insertError);
-                    break;
-                  } else {
-                    migratedCount += batch.length;
-                    console.log(`Migrated ${migratedCount} of ${insertData.length} quotations...`);
-                  }
-                }
+            // Batch insert in chunks of 500 to avoid limits
+            const batchSize = 500;
+            let migratedCount = 0;
+            
+            for (let i = 0; i < insertData.length; i += batchSize) {
+              const batch = insertData.slice(i, i + batchSize);
+              const { error: insertError } = await supabase
+                .from('quotations')
+                .insert(batch);
 
-                if (migratedCount === insertData.length) {
-                  setQuotations(localQuotations);
-                  toast({
-                    title: "Migration Complete",
-                    description: `Migrated all ${migratedCount} quotations to database`,
-                  });
-                  localStorage.removeItem('quotations');
-                } else {
-                  toast({
-                    title: "Partial Migration",
-                    description: `Migrated ${migratedCount} of ${insertData.length} quotations`,
-                    variant: "destructive",
-                  });
-                }
+              if (insertError) {
+                console.error(`Error migrating batch ${i / batchSize + 1}:`, insertError);
+                break;
+              } else {
+                migratedCount += batch.length;
+                console.log(`Migrated ${migratedCount} of ${insertData.length} quotations...`);
               }
             }
-          } catch (e) {
-            console.error('Failed to migrate from localStorage:', e);
+
+            if (migratedCount === insertData.length) {
+              setQuotations(localQuotations);
+              toast({
+                title: "Migration Complete",
+                description: `Migrated all ${migratedCount} quotations to database`,
+              });
+              localStorage.removeItem('quotations');
+            } else {
+              toast({
+                title: "Partial Migration",
+                description: `Migrated ${migratedCount} of ${insertData.length} quotations`,
+                variant: "destructive",
+              });
+            }
           }
         }
       } else {
