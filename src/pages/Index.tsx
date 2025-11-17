@@ -60,7 +60,58 @@ const Index = () => {
           description: error.message,
           variant: "destructive",
         });
-      } else if (data) {
+        setLoading(false);
+        return;
+      }
+
+      // Migrate from localStorage if database is empty
+      if (!data || data.length === 0) {
+        const savedLocal = localStorage.getItem('quotations');
+        if (savedLocal) {
+          try {
+            const localQuotations: Quotation[] = JSON.parse(savedLocal);
+            if (Array.isArray(localQuotations) && localQuotations.length > 0) {
+              console.log('Migrating quotations from localStorage to database...');
+              
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const insertData = localQuotations.map(q => ({
+                  user_id: user.id,
+                  quotation_no: q["QUOTATION NO"],
+                  quotation_date: q["QUOTATION DATE"],
+                  client: q.CLIENT,
+                  new_old: q["NEW/OLD"],
+                  description_1: q["DESCRIPTION 1"],
+                  description_2: q["DESCRIPTION 2"],
+                  qty: q.QTY,
+                  unit_cost: q["UNIT COST"],
+                  total_amount: q["TOTAL AMOUNT"],
+                  sales_person: q["SALES  PERSON"],
+                  invoice_no: q["INVOICE NO"],
+                  status: q.STATUS,
+                }));
+
+                const { error: insertError } = await supabase
+                  .from('quotations')
+                  .insert(insertData);
+
+                if (insertError) {
+                  console.error('Error migrating quotations:', insertError);
+                } else {
+                  setQuotations(localQuotations);
+                  toast({
+                    title: "Migration Complete",
+                    description: `Migrated ${localQuotations.length} quotations to database`,
+                  });
+                  localStorage.removeItem('quotations');
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Failed to migrate from localStorage:', e);
+          }
+        }
+      } else {
         const formattedQuotations: Quotation[] = data.map(q => ({
           "QUOTATION NO": q.quotation_no,
           "QUOTATION DATE": q.quotation_date,
