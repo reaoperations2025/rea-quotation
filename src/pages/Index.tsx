@@ -50,9 +50,9 @@ const Index = () => {
 
       const { data, error } = await supabase
         .from('quotations')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
-        .range(0, 9999); // Fetch up to 10,000 rows
+        .limit(10000); // Fetch up to 10,000 rows
 
       if (error) {
         console.error('Error loading quotations:', error);
@@ -126,7 +126,7 @@ const Index = () => {
               .from('quotations')
               .select('*')
               .order('created_at', { ascending: false })
-              .range(0, 9999);
+              .limit(10000);
             
             if (reloadedData) {
               const formattedQuotations: Quotation[] = reloadedData.map(q => ({
