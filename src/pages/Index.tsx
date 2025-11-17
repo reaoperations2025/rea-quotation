@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { QuotationFilters } from "@/components/QuotationFilters";
+import { QuotationStats } from "@/components/QuotationStats";
 import { QuotationTable } from "@/components/QuotationTable";
 import { AddQuotationDialog } from "@/components/AddQuotationDialog";
 import { EditQuotationDialog } from "@/components/EditQuotationDialog";
@@ -28,6 +29,7 @@ const Index = () => {
     status: "all",
     salesPerson: "all",
     newOld: "all",
+    year: "all",
     quotationNo: "",
     invoiceNo: "",
     dateFrom: "",
@@ -302,6 +304,15 @@ const Index = () => {
         return false;
       }
 
+      // Year filter
+      if (filters.year !== "all") {
+        const quotationYear = quotation["QUOTATION DATE"].split("-")[2];
+        const fullYear = quotationYear === "24" ? "2024" : quotationYear === "25" ? "2025" : "";
+        if (fullYear !== filters.year) {
+          return false;
+        }
+      }
+
       // Quotation number filter
       if (filters.quotationNo && !quotation["QUOTATION NO"].toLowerCase().includes(filters.quotationNo.toLowerCase())) {
         return false;
@@ -361,6 +372,23 @@ const Index = () => {
     }
   }, [filteredQuotations, sortBy]);
 
+  // Calculate statistics for filtered quotations
+  const stats = useMemo(() => {
+    const totalAmount = filteredQuotations.reduce((sum, q) => {
+      const amount = parseFloat(q["TOTAL AMOUNT"].replace(/,/g, ""));
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
+    const invoicedCount = filteredQuotations.filter((q) => q.STATUS === "INVOICED").length;
+    const regretCount = filteredQuotations.filter((q) => q.STATUS === "REGRET").length;
+
+    return {
+      totalQuotations: filteredQuotations.length,
+      totalAmount,
+      invoicedCount,
+      regretCount,
+    };
+  }, [filteredQuotations]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -373,6 +401,7 @@ const Index = () => {
       status: "all",
       salesPerson: "all",
       newOld: "all",
+      year: "all",
       quotationNo: "",
       invoiceNo: "",
       dateFrom: "",
@@ -566,6 +595,13 @@ const Index = () => {
             className="pl-10 h-12 text-lg shadow-sm border-2 focus:border-brand-teal"
           />
         </div>
+
+        <QuotationStats
+          totalQuotations={stats.totalQuotations}
+          totalAmount={stats.totalAmount}
+          invoicedCount={stats.invoicedCount}
+          regretCount={stats.regretCount}
+        />
 
         <QuotationFilters
           filters={filters}

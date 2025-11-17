@@ -10,6 +10,7 @@ interface QuotationFiltersProps {
     status: string;
     salesPerson: string;
     newOld: string;
+    year: string;
     quotationNo: string;
     invoiceNo: string;
     dateFrom: string;
@@ -112,6 +113,20 @@ export const QuotationFilters = ({
               <SelectItem value="all">All types</SelectItem>
               <SelectItem value="NEW">NEW</SelectItem>
               <SelectItem value="OLD">OLD</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="year">Year</Label>
+          <Select value={filters.year} onValueChange={(value) => onFilterChange("year", value)}>
+            <SelectTrigger id="year">
+              <SelectValue placeholder="All years" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All years</SelectItem>
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
             </SelectContent>
           </Select>
         </div>
