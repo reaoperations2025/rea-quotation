@@ -67,7 +67,7 @@ async function handleExcelFile(base64Data: string, apiKey: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "openai/gpt-5",
         messages: [
           {
             role: "system",
@@ -146,7 +146,7 @@ async function handlePDFFile(base64Data: string, apiKey: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "openai/gpt-5",
         messages: [
           {
             role: "system",
@@ -218,7 +218,7 @@ async function handleImageFile(base64Data: string, apiKey: string) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-pro",
+      model: "openai/gpt-5",
       messages: [
         {
           role: "system",
@@ -304,6 +304,8 @@ async function processAIResponse(response: Response) {
       throw new Error("Rate limit exceeded. Please try again in a moment.");
     } else if (response.status === 402) {
       throw new Error("AI credits exhausted. Please add credits to your workspace.");
+    } else if (response.status === 503) {
+      throw new Error("AI service temporarily overloaded. Please try again in a few moments.");
     }
     
     throw new Error(`AI gateway error: ${response.status} - ${errorText}`);
@@ -329,7 +331,8 @@ async function processAIResponse(response: Response) {
   // Fallback to content parsing
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error("No content or tool calls in AI response");
+    console.error('No content or tool calls found. Response:', JSON.stringify(data, null, 2));
+    throw new Error("Unable to extract data from document. Please ensure the document contains clear quotation information and try again.");
   }
 
   console.log('AI Response content:', content);
@@ -342,11 +345,17 @@ async function processAIResponse(response: Response) {
   }
 
   console.log('Extracted JSON string:', jsonStr);
-  const extractedData = JSON.parse(jsonStr);
-  console.log('Parsed data:', extractedData);
+  
+  try {
+    const extractedData = JSON.parse(jsonStr);
+    console.log('Parsed data:', extractedData);
 
-  return new Response(
-    JSON.stringify({ success: true, data: extractedData }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
+    return new Response(
+      JSON.stringify({ success: true, data: extractedData }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (parseError) {
+    console.error('Failed to parse JSON:', parseError);
+    throw new Error("Unable to parse extracted data. Please ensure the document is clear and try again.");
+  }
 }
