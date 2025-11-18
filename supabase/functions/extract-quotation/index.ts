@@ -56,7 +56,7 @@ serve(async (req) => {
 
 async function handleExcelFile(base64Data: string, apiKey: string) {
   try {
-    console.log('Handling Excel file...');
+    console.log('Handling Excel file with AI extraction...');
     
     const base64Content = base64Data.split(',')[1];
     
@@ -67,58 +67,74 @@ async function handleExcelFile(base64Data: string, apiKey: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           {
+            role: "system",
+            content: "You are an expert data extraction assistant specializing in Excel documents. Extract quotation information with 100% accuracy."
+          },
+          {
             role: "user",
-            content: `Read this Excel quotation and extract these 6 KEY fields EXACTLY as they appear:
+            content: `Analyze this Excel quotation and extract all fields accurately. Look for headers, labels, and structured data in rows and columns.
 
-1. QUOTATION NO
-2. QUOTATION DATE (DD/MM/YYYY format)
-3. CLIENT (full name)
-4. DESCRIPTION 1 (main item/service)
-5. UNIT COST (numbers only, remove AED/$)
-6. TOTAL AMOUNT (numbers only, remove currency)
+Extract these fields EXACTLY as they appear:
+- QUOTATION NO (reference number)
+- QUOTATION DATE (convert to DD/MM/YYYY)
+- CLIENT (customer/company name)
+- DESCRIPTION 1 (main product/service)
+- DESCRIPTION 2 (additional items if any)
+- QTY (quantity as number)
+- UNIT COST (numeric only, no currency)
+- TOTAL AMOUNT (numeric only, no currency)
+- NEW/OLD (client status)
+- SALES PERSON (representative name)
+- INVOICE NO (if present)
+- STATUS (quotation status)
 
-Rules:
-- Copy text EXACTLY as written
-- Remove currency symbols
-- Empty string if not found
-- NO guessing
+Rules: Extract exact text, remove currency symbols, use empty string "" if not found. Format dates as DD/MM/YYYY.
 
-Return ONLY JSON:
-
-{
-  "QUOTATION NO": "",
-  "QUOTATION DATE": "",
-  "CLIENT": "",
-  "NEW/OLD": "",
-  "DESCRIPTION 1": "",
-  "DESCRIPTION 2": "",
-  "QTY": "",
-  "UNIT COST": "",
-  "TOTAL AMOUNT": "",
-  "SALES  PERSON": "",
-  "INVOICE NO": "",
-  "STATUS": ""
-}
-
-Excel Data: ${base64Content.substring(0, 2000)}`
+Excel content (base64 decoded): ${base64Content.substring(0, 2000)}`
           }
         ],
+        tools: [
+          {
+            type: "function",
+            name: "extract_quotation_fields",
+            description: "Extract structured quotation data",
+            parameters: {
+              type: "object",
+              properties: {
+                "QUOTATION NO": { type: "string" },
+                "QUOTATION DATE": { type: "string" },
+                "CLIENT": { type: "string" },
+                "NEW/OLD": { type: "string" },
+                "DESCRIPTION 1": { type: "string" },
+                "DESCRIPTION 2": { type: "string" },
+                "QTY": { type: "string" },
+                "UNIT COST": { type: "string" },
+                "TOTAL AMOUNT": { type: "string" },
+                "SALES  PERSON": { type: "string" },
+                "INVOICE NO": { type: "string" },
+                "STATUS": { type: "string" }
+              },
+              required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "extract_quotation_fields" } }
       }),
     });
 
     return await processAIResponse(response);
   } catch (error) {
-    console.error("Excel error:", error);
+    console.error("Excel extraction error:", error);
     throw new Error("Failed to process Excel: " + (error instanceof Error ? error.message : "Unknown"));
   }
 }
 
 async function handlePDFFile(base64Data: string, apiKey: string) {
   try {
-    console.log('Handling PDF file...');
+    console.log('Handling PDF file with AI extraction...');
     
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -127,51 +143,86 @@ async function handlePDFFile(base64Data: string, apiKey: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           {
+            role: "system",
+            content: "You are an expert data extraction assistant. Extract quotation information from documents with 100% accuracy. Only extract visible text - never guess or make up information."
+          },
+          {
             role: "user",
-            content: `Read this PDF quotation and extract these 6 KEY fields EXACTLY as they appear:
+            content: [
+              {
+                type: "text",
+                text: `Analyze this PDF quotation document carefully and extract the following fields with complete accuracy:
 
-1. QUOTATION NO
-2. QUOTATION DATE (DD/MM/YYYY format)
-3. CLIENT (full company name)
-4. DESCRIPTION 1 (main item/service)
-5. UNIT COST (numbers only, remove AED/$)
-6. TOTAL AMOUNT (numbers only, remove currency)
+REQUIRED FIELDS (extract EXACTLY as shown in document):
+1. QUOTATION NO - The quotation/quote reference number
+2. QUOTATION DATE - Format as DD/MM/YYYY
+3. CLIENT - Full client/customer name or company name
+4. DESCRIPTION 1 - Primary item, service, or product description
+5. UNIT COST - Numeric value only (remove AED, $, or any currency symbols)
+6. TOTAL AMOUNT - Total cost as numeric value (remove currency symbols)
 
-Rules:
-- Copy text EXACTLY
-- Remove currency symbols
-- Empty string if not found
-- NO guessing
+OPTIONAL FIELDS (if visible):
+7. DESCRIPTION 2 - Additional description or second line item
+8. QTY - Quantity (numeric)
+9. NEW/OLD - Client status if mentioned
+10. SALES PERSON - Sales representative name
+11. INVOICE NO - Invoice reference if present
+12. STATUS - Order/quotation status
 
-Return ONLY JSON:
+EXTRACTION RULES:
+- Extract text EXACTLY as it appears
+- For dates: convert to DD/MM/YYYY format
+- For numbers: remove all currency symbols and commas, keep only digits and decimal point
+- If a field is not visible or unclear, leave it as empty string ""
+- Do NOT guess, infer, or make up any information
+- Pay attention to headers, labels, and document structure
 
-{
-  "QUOTATION NO": "",
-  "QUOTATION DATE": "",
-  "CLIENT": "",
-  "NEW/OLD": "",
-  "DESCRIPTION 1": "",
-  "DESCRIPTION 2": "",
-  "QTY": "",
-  "UNIT COST": "",
-  "TOTAL AMOUNT": "",
-  "SALES  PERSON": "",
-  "INVOICE NO": "",
-  "STATUS": ""
-}
-
-PDF Data: ${base64Data.substring(0, 3000)}`
+Return your response as a JSON object with these exact keys.`
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Data
+                }
+              }
+            ]
           }
         ],
+        tools: [
+          {
+            type: "function",
+            name: "extract_quotation_fields",
+            description: "Extract structured quotation data from the document",
+            parameters: {
+              type: "object",
+              properties: {
+                "QUOTATION NO": { type: "string", description: "Quotation reference number" },
+                "QUOTATION DATE": { type: "string", description: "Date in DD/MM/YYYY format" },
+                "CLIENT": { type: "string", description: "Client or company name" },
+                "NEW/OLD": { type: "string", description: "Client status" },
+                "DESCRIPTION 1": { type: "string", description: "Primary item/service description" },
+                "DESCRIPTION 2": { type: "string", description: "Additional description" },
+                "QTY": { type: "string", description: "Quantity" },
+                "UNIT COST": { type: "string", description: "Unit cost without currency symbols" },
+                "TOTAL AMOUNT": { type: "string", description: "Total amount without currency symbols" },
+                "SALES  PERSON": { type: "string", description: "Sales person name" },
+                "INVOICE NO": { type: "string", description: "Invoice number if available" },
+                "STATUS": { type: "string", description: "Quotation status" }
+              },
+              required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "extract_quotation_fields" } }
       }),
     });
 
     return await processAIResponse(response);
   } catch (error) {
-    console.error("PDF error:", error);
+    console.error("PDF extraction error:", error);
     throw new Error("Failed to process PDF: " + (error instanceof Error ? error.message : "Unknown"));
   }
 }
@@ -183,45 +234,43 @@ async function handleImageFile(base64Data: string, apiKey: string) {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Look at this quotation image and extract these 6 KEY fields EXACTLY:
+    body: JSON.stringify({
+      model: "google/gemini-2.5-pro",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert OCR and data extraction assistant. Extract quotation information from images with perfect accuracy."
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Carefully analyze this quotation image and extract all visible information with complete accuracy.
 
-1. QUOTATION NO
-2. QUOTATION DATE (DD/MM/YYYY)
-3. CLIENT (full name)
-4. DESCRIPTION 1 (main item/service)
-5. UNIT COST (numbers only, no AED/$)
-6. TOTAL AMOUNT (numbers only, no currency)
+EXTRACT THESE FIELDS:
+- QUOTATION NO: Reference/quote number
+- QUOTATION DATE: Convert to DD/MM/YYYY format
+- CLIENT: Full customer or company name
+- DESCRIPTION 1: Main product/service/item
+- DESCRIPTION 2: Additional items if visible
+- QTY: Quantity (numeric)
+- UNIT COST: Price per unit (remove currency symbols)
+- TOTAL AMOUNT: Total cost (remove currency symbols)
+- NEW/OLD: Client status if mentioned
+- SALES PERSON: Sales representative name
+- INVOICE NO: Invoice reference if shown
+- STATUS: Quotation/order status
 
-Rules:
-- Copy text EXACTLY as shown
-- Remove currency symbols
-- Empty string if not visible
-- NO guessing
+RULES:
+- Read and transcribe text EXACTLY as it appears in the image
+- For amounts: remove AED, $, or any currency symbols - keep only numbers
+- For dates: convert to DD/MM/YYYY format
+- Use empty string "" for fields not visible in the image
+- Do NOT guess or infer information not clearly visible
+- Pay attention to tables, headers, and structured layouts
 
-Return ONLY JSON:
-
-{
-  "QUOTATION NO": "",
-  "QUOTATION DATE": "",
-  "CLIENT": "",
-  "NEW/OLD": "",
-  "DESCRIPTION 1": "",
-  "DESCRIPTION 2": "",
-  "QTY": "",
-  "UNIT COST": "",
-  "TOTAL AMOUNT": "",
-  "SALES  PERSON": "",
-  "INVOICE NO": "",
-  "STATUS": ""
-}`
+Return structured JSON with all fields.`
             },
             {
               type: "image_url",
@@ -232,6 +281,32 @@ Return ONLY JSON:
           ]
         }
       ],
+      tools: [
+        {
+          type: "function",
+          name: "extract_quotation_fields",
+          description: "Extract all quotation fields from the image",
+          parameters: {
+            type: "object",
+            properties: {
+              "QUOTATION NO": { type: "string" },
+              "QUOTATION DATE": { type: "string" },
+              "CLIENT": { type: "string" },
+              "NEW/OLD": { type: "string" },
+              "DESCRIPTION 1": { type: "string" },
+              "DESCRIPTION 2": { type: "string" },
+              "QTY": { type: "string" },
+              "UNIT COST": { type: "string" },
+              "TOTAL AMOUNT": { type: "string" },
+              "SALES  PERSON": { type: "string" },
+              "INVOICE NO": { type: "string" },
+              "STATUS": { type: "string" }
+            },
+            required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+          }
+        }
+      ],
+      tool_choice: { type: "function", function: { name: "extract_quotation_fields" } }
     }),
   });
 
@@ -253,13 +328,29 @@ async function processAIResponse(response: Response) {
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  console.log('Full AI response:', JSON.stringify(data, null, 2));
 
-  if (!content) {
-    throw new Error("No content in AI response");
+  // Check for tool call response (structured output)
+  const toolCalls = data.choices?.[0]?.message?.tool_calls;
+  if (toolCalls && toolCalls.length > 0) {
+    const functionCall = toolCalls[0];
+    console.log('Tool call detected:', functionCall.function.name);
+    const extractedData = JSON.parse(functionCall.function.arguments);
+    console.log('Extracted data from tool call:', extractedData);
+    
+    return new Response(
+      JSON.stringify({ success: true, data: extractedData }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
-  console.log('AI Response:', content);
+  // Fallback to content parsing
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error("No content or tool calls in AI response");
+  }
+
+  console.log('AI Response content:', content);
 
   // Extract JSON from the response
   let jsonStr = content.trim();
@@ -268,7 +359,7 @@ async function processAIResponse(response: Response) {
     jsonStr = jsonMatch[1].trim();
   }
 
-  console.log('Extracted JSON:', jsonStr);
+  console.log('Extracted JSON string:', jsonStr);
   const extractedData = JSON.parse(jsonStr);
   console.log('Parsed data:', extractedData);
 
