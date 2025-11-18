@@ -215,7 +215,7 @@ PDF document data (base64): ${base64Content.substring(0, 3000)}`
 }
 
 async function handleImageFile(base64Data: string, apiKey: string) {
-  console.log('Starting image extraction with openai/gpt-5...');
+  console.log('Starting image extraction with google/gemini-2.5-flash...');
   
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -225,7 +225,7 @@ async function handleImageFile(base64Data: string, apiKey: string) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
@@ -271,7 +271,6 @@ Return structured JSON with all fields.`
             ]
           }
         ],
-        max_completion_tokens: 4000,
         tools: [
           {
             type: "function",
