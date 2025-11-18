@@ -271,7 +271,7 @@ Return structured JSON with all fields.`
             ]
           }
         ],
-        max_completion_tokens: 1000,
+        max_completion_tokens: 4000,
         tools: [
           {
             type: "function",
