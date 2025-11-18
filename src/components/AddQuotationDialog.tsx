@@ -195,7 +195,33 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
 
       if (data.success && data.data) {
         console.log('Extraction successful, updating form with:', data.data);
-        setFormData(data.data);
+        
+        // Extract line item data
+        const extractedLineItem: LineItem = {
+          id: "1",
+          description: `${data.data["DESCRIPTION 1"] || ""}${data.data["DESCRIPTION 2"] ? " - " + data.data["DESCRIPTION 2"] : ""}`.trim(),
+          qty: data.data["QTY"] || "",
+          unitCost: data.data["UNIT COST"] || "",
+          lineTotal: data.data["TOTAL AMOUNT"] || ""
+        };
+        
+        // Update line items if we have any extracted data
+        if (extractedLineItem.description || extractedLineItem.qty || extractedLineItem.unitCost) {
+          setLineItems([extractedLineItem]);
+        }
+        
+        // Update main form fields (excluding the line item fields)
+        const mainFormData = {
+          "QUOTATION NO": data.data["QUOTATION NO"] || "",
+          "QUOTATION DATE": data.data["QUOTATION DATE"] || "",
+          "CLIENT": data.data["CLIENT"] || "",
+          "NEW/OLD": data.data["NEW/OLD"] || "NEW",
+          "SALES  PERSON": data.data["SALES  PERSON"] || "",
+          "INVOICE NO": data.data["INVOICE NO"] || "",
+          "STATUS": data.data["STATUS"] || "PENDING",
+        };
+        
+        setFormData(mainFormData);
         
         // Count filled vs empty fields
         const extractedFields = Object.entries(data.data).filter(([key, value]) => value && value.toString().trim() !== "").length;
