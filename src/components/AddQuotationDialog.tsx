@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,8 +26,10 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { id: "1", description: "", qty: "", unitCost: "", lineTotal: "" }
   ]);
@@ -232,6 +234,58 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await extractQuotationData(file);
+    }
+  };
+
+  const handlePaste = async (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          await extractQuotationData(file);
+          toast({
+            title: "Image Pasted",
+            description: "Processing the pasted image...",
+          });
+        }
+        break;
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      window.addEventListener('paste', handlePaste);
+      return () => {
+        window.removeEventListener('paste', handlePaste);
+      };
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -248,46 +302,67 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-2 p-4 bg-muted rounded-lg">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf,.xlsx,.xls"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleCameraCapture}
-              className="hidden"
-            />
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={isScanning}
-          >
-            <Camera className="mr-2 h-4 w-4" />
-            Take Photo
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="flex-1"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isScanning}
-          >
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Document
-          </Button>
+        <div 
+          ref={dropZoneRef}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`p-6 border-2 border-dashed rounded-lg transition-colors ${
+            isDragging 
+              ? 'border-brand-teal bg-brand-teal/10' 
+              : 'border-muted bg-muted'
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,application/pdf,.xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleCameraCapture}
+            className="hidden"
+          />
+          
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex gap-2 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={isScanning}
+              >
+                <Camera className="mr-2 h-4 w-4" />
+                Take Photo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isScanning}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload Document
+              </Button>
+            </div>
+            
+            <div className="text-center space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">
+                or drag & drop files here, or paste images (Ctrl/Cmd + V)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                📄 Supported: Images (JPG, PNG, WEBP), PDF, Excel (XLS, XLSX) - max 10MB
+              </p>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground px-4">
-          📄 Supported formats: Images (JPG, PNG, WEBP), PDF, Excel (XLS, XLSX) - max 10MB
-        </p>
 
         {isScanning && (
           <div className="flex flex-col items-center justify-center gap-3 p-4 bg-primary/10 rounded-lg">
