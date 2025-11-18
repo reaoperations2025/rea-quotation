@@ -120,8 +120,7 @@ Excel content (base64 decoded): ${base64Content.substring(0, 2000)}`
               required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
             }
           }
-        ],
-        tool_choice: { type: "function", function: { name: "extract_quotation_fields" } }
+        ]
       }),
     });
 
@@ -206,8 +205,7 @@ Return your response as a JSON object with these exact keys.`
               required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
             }
           }
-        ],
-        tool_choice: { type: "function", function: { name: "extract_quotation_fields" } }
+        ]
       }),
     });
 
@@ -296,8 +294,7 @@ Return structured JSON with all fields.`
             required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
           }
         }
-      ],
-      tool_choice: { type: "function", function: { name: "extract_quotation_fields" } }
+        ]
     }),
   });
 
