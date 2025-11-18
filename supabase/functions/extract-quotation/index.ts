@@ -99,25 +99,27 @@ Excel content (base64 decoded): ${base64Content.substring(0, 2000)}`
         tools: [
           {
             type: "function",
-            name: "extract_quotation_fields",
-            description: "Extract structured quotation data",
-            parameters: {
-              type: "object",
-              properties: {
-                "QUOTATION NO": { type: "string" },
-                "QUOTATION DATE": { type: "string" },
-                "CLIENT": { type: "string" },
-                "NEW/OLD": { type: "string" },
-                "DESCRIPTION 1": { type: "string" },
-                "DESCRIPTION 2": { type: "string" },
-                "QTY": { type: "string" },
-                "UNIT COST": { type: "string" },
-                "TOTAL AMOUNT": { type: "string" },
-                "SALES  PERSON": { type: "string" },
-                "INVOICE NO": { type: "string" },
-                "STATUS": { type: "string" }
-              },
-              required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+            function: {
+              name: "extract_quotation_fields",
+              description: "Extract structured quotation data",
+              parameters: {
+                type: "object",
+                properties: {
+                  "QUOTATION NO": { type: "string" },
+                  "QUOTATION DATE": { type: "string" },
+                  "CLIENT": { type: "string" },
+                  "NEW/OLD": { type: "string" },
+                  "DESCRIPTION 1": { type: "string" },
+                  "DESCRIPTION 2": { type: "string" },
+                  "QTY": { type: "string" },
+                  "UNIT COST": { type: "string" },
+                  "TOTAL AMOUNT": { type: "string" },
+                  "SALES  PERSON": { type: "string" },
+                  "INVOICE NO": { type: "string" },
+                  "STATUS": { type: "string" }
+                },
+                required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+              }
             }
           }
         ]
@@ -178,25 +180,27 @@ PDF document data (base64): ${base64Content.substring(0, 3000)}`
         tools: [
           {
             type: "function",
-            name: "extract_quotation_fields",
-            description: "Extract structured quotation data from the document",
-            parameters: {
-              type: "object",
-              properties: {
-                "QUOTATION NO": { type: "string", description: "Quotation reference number" },
-                "QUOTATION DATE": { type: "string", description: "Date in DD/MM/YYYY format" },
-                "CLIENT": { type: "string", description: "Client or company name" },
-                "NEW/OLD": { type: "string", description: "Client status" },
-                "DESCRIPTION 1": { type: "string", description: "Primary item/service description" },
-                "DESCRIPTION 2": { type: "string", description: "Additional description" },
-                "QTY": { type: "string", description: "Quantity" },
-                "UNIT COST": { type: "string", description: "Unit cost without currency symbols" },
-                "TOTAL AMOUNT": { type: "string", description: "Total amount without currency symbols" },
-                "SALES  PERSON": { type: "string", description: "Sales person name" },
-                "INVOICE NO": { type: "string", description: "Invoice number if available" },
-                "STATUS": { type: "string", description: "Quotation status" }
-              },
-              required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+            function: {
+              name: "extract_quotation_fields",
+              description: "Extract structured quotation data from the document",
+              parameters: {
+                type: "object",
+                properties: {
+                  "QUOTATION NO": { type: "string", description: "Quotation reference number" },
+                  "QUOTATION DATE": { type: "string", description: "Date in DD/MM/YYYY format" },
+                  "CLIENT": { type: "string", description: "Client or company name" },
+                  "NEW/OLD": { type: "string", description: "Client status" },
+                  "DESCRIPTION 1": { type: "string", description: "Primary item/service description" },
+                  "DESCRIPTION 2": { type: "string", description: "Additional description" },
+                  "QTY": { type: "string", description: "Quantity" },
+                  "UNIT COST": { type: "string", description: "Unit cost without currency symbols" },
+                  "TOTAL AMOUNT": { type: "string", description: "Total amount without currency symbols" },
+                  "SALES  PERSON": { type: "string", description: "Sales person name" },
+                  "INVOICE NO": { type: "string", description: "Invoice number if available" },
+                  "STATUS": { type: "string", description: "Quotation status" }
+                },
+                required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+              }
             }
           }
         ]
@@ -267,28 +271,30 @@ Return structured JSON with all fields.`
       tools: [
         {
           type: "function",
-          name: "extract_quotation_fields",
-          description: "Extract all quotation fields from the image",
-          parameters: {
-            type: "object",
-            properties: {
-              "QUOTATION NO": { type: "string" },
-              "QUOTATION DATE": { type: "string" },
-              "CLIENT": { type: "string" },
-              "NEW/OLD": { type: "string" },
-              "DESCRIPTION 1": { type: "string" },
-              "DESCRIPTION 2": { type: "string" },
-              "QTY": { type: "string" },
-              "UNIT COST": { type: "string" },
-              "TOTAL AMOUNT": { type: "string" },
-              "SALES  PERSON": { type: "string" },
-              "INVOICE NO": { type: "string" },
-              "STATUS": { type: "string" }
-            },
-            required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+          function: {
+            name: "extract_quotation_fields",
+            description: "Extract all quotation fields from the image",
+            parameters: {
+              type: "object",
+              properties: {
+                "QUOTATION NO": { type: "string" },
+                "QUOTATION DATE": { type: "string" },
+                "CLIENT": { type: "string" },
+                "NEW/OLD": { type: "string" },
+                "DESCRIPTION 1": { type: "string" },
+                "DESCRIPTION 2": { type: "string" },
+                "QTY": { type: "string" },
+                "UNIT COST": { type: "string" },
+                "TOTAL AMOUNT": { type: "string" },
+                "SALES  PERSON": { type: "string" },
+                "INVOICE NO": { type: "string" },
+                "STATUS": { type: "string" }
+              },
+              required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
+            }
           }
         }
-        ]
+      ]
     }),
   });
 
