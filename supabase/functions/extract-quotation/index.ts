@@ -215,25 +215,28 @@ PDF document data (base64): ${base64Content.substring(0, 3000)}`
 }
 
 async function handleImageFile(base64Data: string, apiKey: string) {
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-5",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert OCR and data extraction assistant. Extract quotation information from images with perfect accuracy."
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Carefully analyze this quotation image and extract all visible information with complete accuracy.
+  console.log('Starting image extraction with openai/gpt-5...');
+  
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5",
+        messages: [
+          {
+            role: "system",
+            content: "You are an expert OCR and data extraction assistant. Extract quotation information from images with perfect accuracy."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Carefully analyze this quotation image and extract all visible information with complete accuracy.
 
 EXTRACT THESE FIELDS:
 - QUOTATION NO: Reference/quote number
@@ -258,47 +261,53 @@ RULES:
 - Pay attention to tables, headers, and structured layouts
 
 Return structured JSON with all fields.`
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: base64Data
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Data
+                }
+              }
+            ]
+          }
+        ],
+        max_completion_tokens: 1000,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extract_quotation_fields",
+              description: "Extract all quotation fields from the image",
+              parameters: {
+                type: "object",
+                properties: {
+                  "QUOTATION NO": { type: "string" },
+                  "QUOTATION DATE": { type: "string" },
+                  "CLIENT": { type: "string" },
+                  "NEW/OLD": { type: "string" },
+                  "DESCRIPTION 1": { type: "string" },
+                  "DESCRIPTION 2": { type: "string" },
+                  "QTY": { type: "string" },
+                  "UNIT COST": { type: "string" },
+                  "TOTAL AMOUNT": { type: "string" },
+                  "SALES  PERSON": { type: "string" },
+                  "INVOICE NO": { type: "string" },
+                  "STATUS": { type: "string" }
+                },
+                required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
               }
             }
-          ]
-        }
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "extract_quotation_fields",
-            description: "Extract all quotation fields from the image",
-            parameters: {
-              type: "object",
-              properties: {
-                "QUOTATION NO": { type: "string" },
-                "QUOTATION DATE": { type: "string" },
-                "CLIENT": { type: "string" },
-                "NEW/OLD": { type: "string" },
-                "DESCRIPTION 1": { type: "string" },
-                "DESCRIPTION 2": { type: "string" },
-                "QTY": { type: "string" },
-                "UNIT COST": { type: "string" },
-                "TOTAL AMOUNT": { type: "string" },
-                "SALES  PERSON": { type: "string" },
-                "INVOICE NO": { type: "string" },
-                "STATUS": { type: "string" }
-              },
-              required: ["QUOTATION NO", "QUOTATION DATE", "CLIENT", "NEW/OLD", "DESCRIPTION 1", "DESCRIPTION 2", "QTY", "UNIT COST", "TOTAL AMOUNT", "SALES  PERSON", "INVOICE NO", "STATUS"]
-            }
           }
-        }
-      ]
-    }),
-  });
+        ]
+      }),
+    });
 
-  return await processAIResponse(response);
+    console.log('OpenAI API response status:', response.status);
+    return await processAIResponse(response);
+  } catch (error) {
+    console.error("Image extraction error:", error);
+    throw new Error("Failed to process image: " + (error instanceof Error ? error.message : "Unknown"));
+  }
 }
 
 async function processAIResponse(response: Response) {

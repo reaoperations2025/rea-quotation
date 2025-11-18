@@ -194,6 +194,7 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
       }
 
       if (data.success && data.data) {
+        console.log('Extraction successful, updating form with:', data.data);
         setFormData(data.data);
         
         // Count filled vs empty fields
@@ -205,6 +206,7 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
           description: `Extracted ${extractedFields} out of ${totalFields} fields. Please review and verify the accuracy before saving.`,
         });
       } else {
+        console.error('Extraction failed or no data:', data);
         throw new Error(data.error || "Failed to extract data");
       }
     } catch (error) {
