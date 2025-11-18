@@ -146,11 +146,14 @@ async function handlePDFFile(base64Data: string, apiKey: string) {
         messages: [
           {
             role: "system",
-            content: "You are an expert data extraction assistant. Extract quotation information from documents with 100% accuracy. Only extract visible text - never guess or make up information."
+            content: "You are an expert data extraction assistant. Extract quotation information from PDF documents with 100% accuracy. Only extract visible text - never guess or make up information."
           },
           {
             role: "user",
-            content: `Analyze this PDF quotation document carefully and extract the following fields with complete accuracy:
+            content: [
+              {
+                type: "text",
+                text: `Analyze this PDF quotation document carefully and extract the following fields with complete accuracy:
 
 REQUIRED FIELDS (extract EXACTLY as shown in document):
 1. QUOTATION NO - The quotation/quote reference number
@@ -176,9 +179,15 @@ EXTRACTION RULES:
 - Do NOT guess, infer, or make up any information
 - Pay attention to headers, labels, and document structure
 
-PDF Content (first 2000 chars of base64): ${base64Data.substring(0, 2000)}
-
-Return your response as a JSON object with these exact keys.`
+Return structured JSON with all fields.`
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Data
+                }
+              }
+            ]
           }
         ],
         tools: [
