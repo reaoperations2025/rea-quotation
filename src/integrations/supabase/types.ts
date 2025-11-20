@@ -121,6 +121,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_quotation_stats: {
+        Args: never
+        Returns: {
+          invoiced_count: number
+          regret_count: number
+          total_amount: number
+          total_records: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

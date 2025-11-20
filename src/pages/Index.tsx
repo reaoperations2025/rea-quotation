@@ -25,6 +25,12 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [dbStats, setDbStats] = useState({
+    totalQuotations: 0,
+    totalAmount: 0,
+    invoicedCount: 0,
+    regretCount: 0,
+  });
   const [filters, setFilters] = useState({
     client: "all",
     status: "all",
@@ -40,6 +46,45 @@ const Index = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("date-newest");
   const itemsPerPage = 10000; // Show all quotations
+
+  // Fetch statistics directly from database
+  const fetchDatabaseStats = async () => {
+    const { data, error } = await supabase.rpc('get_quotation_stats');
+    
+    if (error) {
+      console.error('Error fetching stats:', error);
+      // Fallback: calculate from database directly
+      const { data: statsData } = await supabase
+        .from('quotations')
+        .select('total_amount, status');
+      
+      if (statsData) {
+        const totalAmount = statsData.reduce((sum, q) => {
+          const amountStr = (q.total_amount || "").toString().trim();
+          if (!amountStr || amountStr === "-") return sum;
+          const amount = parseFloat(amountStr.replace(/,/g, ""));
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0);
+
+        const invoicedCount = statsData.filter(q => q.status?.toUpperCase() === "INVOICED").length;
+        const regretCount = statsData.filter(q => q.status?.toUpperCase() === "REGRET").length;
+
+        setDbStats({
+          totalQuotations: statsData.length,
+          totalAmount,
+          invoicedCount,
+          regretCount,
+        });
+      }
+    } else if (data && data.length > 0) {
+      setDbStats({
+        totalQuotations: data[0].total_records || 0,
+        totalAmount: data[0].total_amount || 0,
+        invoicedCount: data[0].invoiced_count || 0,
+        regretCount: data[0].regret_count || 0,
+      });
+    }
+  };
 
   // Check authentication and load quotations
   useEffect(() => {
@@ -113,6 +158,10 @@ const Index = () => {
         }));
         setQuotations(formattedQuotations);
       }
+      
+      // Fetch accurate statistics from database
+      await fetchDatabaseStats();
+      
       setLoading(false);
     };
 
@@ -322,15 +371,11 @@ const Index = () => {
     }
   }, [filteredQuotations, sortBy]);
 
-  // Calculate statistics for filtered quotations
-  const stats = useMemo(() => {
+  // Calculate statistics for filtered quotations (for display only, not for main stats)
+  const filteredStats = useMemo(() => {
     const totalAmount = filteredQuotations.reduce((sum, q) => {
       const amountStr = (q["TOTAL AMOUNT"] || "").toString().trim();
-      // Skip empty, null, or invalid values like "-"
-      if (!amountStr || amountStr === "-" || amountStr === "0" || amountStr === "0.00") {
-        return sum;
-      }
-      // Remove commas and parse
+      if (!amountStr || amountStr === "-") return sum;
       const amount = parseFloat(amountStr.replace(/,/g, ""));
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0);
@@ -350,6 +395,21 @@ const Index = () => {
       regretCount,
     };
   }, [filteredQuotations]);
+
+  // Use database stats if no filters are active, otherwise use filtered stats
+  const hasActiveFilters = 
+    filters.client !== "all" ||
+    filters.status !== "all" ||
+    filters.salesPerson !== "all" ||
+    filters.newOld !== "all" ||
+    filters.year !== "all" ||
+    filters.quotationNo !== "" ||
+    filters.invoiceNo !== "" ||
+    filters.dateFrom !== "" ||
+    filters.dateTo !== "" ||
+    searchQuery !== "";
+
+  const stats = hasActiveFilters ? filteredStats : dbStats;
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
