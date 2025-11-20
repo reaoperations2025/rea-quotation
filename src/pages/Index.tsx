@@ -52,10 +52,12 @@ const Index = () => {
 
       console.log('Loading quotations for all users...');
       
+      // Fetch all quotations by specifying a large range
       const { data, error, count } = await supabase
         .from('quotations')
         .select('*', { count: 'exact' })
-        .order('quotation_no', { ascending: true }); // Load all quotations without limit
+        .order('quotation_no', { ascending: true })
+        .range(0, 9999); // Load up to 10,000 rows
 
       if (error) {
         console.error('Error loading quotations:', error);
