@@ -55,8 +55,7 @@ const Index = () => {
       const { data, error, count } = await supabase
         .from('quotations')
         .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .limit(10000); // Fetch up to 10,000 rows
+        .order('quotation_no', { ascending: true }); // Load all quotations without limit
 
       if (error) {
         console.error('Error loading quotations:', error);
