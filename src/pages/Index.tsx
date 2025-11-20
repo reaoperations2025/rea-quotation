@@ -49,40 +49,26 @@ const Index = () => {
 
   // Fetch statistics directly from database
   const fetchDatabaseStats = async () => {
-    const { data, error } = await supabase.rpc('get_quotation_stats');
-    
-    if (error) {
-      console.error('Error fetching stats:', error);
-      // Fallback: calculate from database directly
-      const { data: statsData } = await supabase
-        .from('quotations')
-        .select('total_amount, status');
+    try {
+      const { data, error } = await supabase.rpc('get_quotation_stats');
       
-      if (statsData) {
-        const totalAmount = statsData.reduce((sum, q) => {
-          const amountStr = (q.total_amount || "").toString().trim();
-          if (!amountStr || amountStr === "-") return sum;
-          const amount = parseFloat(amountStr.replace(/,/g, ""));
-          return sum + (isNaN(amount) ? 0 : amount);
-        }, 0);
-
-        const invoicedCount = statsData.filter(q => q.status?.toUpperCase() === "INVOICED").length;
-        const regretCount = statsData.filter(q => q.status?.toUpperCase() === "REGRET").length;
-
-        setDbStats({
-          totalQuotations: statsData.length,
-          totalAmount,
-          invoicedCount,
-          regretCount,
-        });
+      if (error) {
+        console.error('Error fetching stats from RPC:', error);
+        throw error;
       }
-    } else if (data && data.length > 0) {
-      setDbStats({
-        totalQuotations: data[0].total_records || 0,
-        totalAmount: data[0].total_amount || 0,
-        invoicedCount: data[0].invoiced_count || 0,
-        regretCount: data[0].regret_count || 0,
-      });
+      
+      if (data && data.length > 0) {
+        const stats = {
+          totalQuotations: Number(data[0].total_records) || 0,
+          totalAmount: Number(data[0].total_amount) || 0,
+          invoicedCount: Number(data[0].invoiced_count) || 0,
+          regretCount: Number(data[0].regret_count) || 0,
+        };
+        console.log('Database stats loaded:', stats);
+        setDbStats(stats);
+      }
+    } catch (error) {
+      console.error('Failed to fetch database stats:', error);
     }
   };
 
@@ -371,12 +357,16 @@ const Index = () => {
     }
   }, [filteredQuotations, sortBy]);
 
-  // Calculate statistics for filtered quotations (for display only, not for main stats)
+  // Calculate statistics for filtered quotations (matches database logic exactly)
   const filteredStats = useMemo(() => {
     const totalAmount = filteredQuotations.reduce((sum, q) => {
       const amountStr = (q["TOTAL AMOUNT"] || "").toString().trim();
-      if (!amountStr || amountStr === "-") return sum;
-      const amount = parseFloat(amountStr.replace(/,/g, ""));
+      // Match database logic: skip null, empty, or "-" values
+      if (!amountStr || amountStr === "" || amountStr === "-") return sum;
+      // Remove commas and parse as float
+      const cleanStr = amountStr.replace(/,/g, "");
+      const amount = parseFloat(cleanStr);
+      // Only add if valid number
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0);
 
@@ -388,12 +378,16 @@ const Index = () => {
       q.STATUS && q.STATUS.toUpperCase() === "REGRET"
     ).length;
 
-    return {
+    const stats = {
       totalQuotations: filteredQuotations.length,
       totalAmount,
       invoicedCount,
       regretCount,
     };
+    
+    console.log('Filtered stats calculated:', stats, 'from', filteredQuotations.length, 'quotations');
+    
+    return stats;
   }, [filteredQuotations]);
 
   // Use database stats if no filters are active, otherwise use filtered stats
@@ -410,6 +404,12 @@ const Index = () => {
     searchQuery !== "";
 
   const stats = hasActiveFilters ? filteredStats : dbStats;
+  
+  console.log('Stats display:', {
+    hasActiveFilters,
+    usingStats: hasActiveFilters ? 'filtered' : 'database',
+    stats
+  });
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
