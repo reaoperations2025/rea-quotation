@@ -50,35 +50,54 @@ const Index = () => {
         return;
       }
 
-      console.log('Loading quotations for all users...');
+      console.log('Loading all quotations...');
       
-      // Fetch all quotations by specifying a large range
-      const { data, error, count } = await supabase
-        .from('quotations')
-        .select('*', { count: 'exact' })
-        .order('quotation_no', { ascending: true })
-        .range(0, 9999); // Load up to 10,000 rows
+      // Load all quotations in batches (Supabase has 1000 row limit per request)
+      let allQuotations: any[] = [];
+      let from = 0;
+      const batchSize = 1000;
+      let hasMore = true;
 
-      if (error) {
-        console.error('Error loading quotations:', error);
-        toast({
-          title: "Error loading quotations",
-          description: error.message,
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
+      while (hasMore) {
+        const { data, error, count } = await supabase
+          .from('quotations')
+          .select('*', { count: 'exact' })
+          .order('quotation_no', { ascending: true })
+          .range(from, from + batchSize - 1);
+
+        if (error) {
+          console.error('Error loading quotations:', error);
+          toast({
+            title: "Error loading quotations",
+            description: error.message,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          allQuotations = [...allQuotations, ...data];
+          console.log(`Loaded batch: ${data.length} records (total so far: ${allQuotations.length}/${count})`);
+          
+          // Check if we've loaded all records
+          if (allQuotations.length >= (count || 0)) {
+            hasMore = false;
+          } else {
+            from += batchSize;
+          }
+        } else {
+          hasMore = false;
+        }
       }
 
-      console.log(`Loaded ${data?.length || 0} quotations from database (total count: ${count})`);
+      console.log(`✓ Loaded ALL ${allQuotations.length} quotations from database`);
       
       // Clear localStorage - we only use database now
       localStorage.removeItem('quotations');
-      
-      // AUTO-IMPORT DISABLED - Import manually using the Import button
 
-      if (data) {
-        const formattedQuotations: Quotation[] = data.map(q => ({
+      if (allQuotations.length > 0) {
+        const formattedQuotations: Quotation[] = allQuotations.map(q => ({
           "QUOTATION NO": q.quotation_no,
           "QUOTATION DATE": q.quotation_date,
           "CLIENT": q.client,
