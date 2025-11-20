@@ -591,15 +591,6 @@ const Index = () => {
           <div className="flex flex-wrap gap-3">
             <AddQuotationDialog onAdd={handleAddQuotation} />
             <Button 
-              onClick={handleImportData}
-              variant="default"
-              className="bg-gradient-to-r from-brand-gold to-yellow-500 text-white hover:from-brand-gold/90 hover:to-yellow-500/90"
-              disabled={loading}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {loading ? 'Importing...' : 'Import All 2119 Records'}
-            </Button>
-            <Button 
               onClick={handleRefreshData}
               variant="outline"
               className="border-primary text-primary hover:bg-primary hover:text-white"
