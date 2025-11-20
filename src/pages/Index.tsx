@@ -512,31 +512,44 @@ const Index = () => {
   };
 
   const handleImportData = async () => {
-    setLoading(true);
-    try {
-      toast({
-        title: "Import started",
-        description: "Importing 2119 quotations from JSON file...",
-      });
+    // Prompt user to upload the JSON file
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
 
-      const result = await importQuotationsFromJSON();
-      
-      toast({
-        title: "Import complete",
-        description: `Successfully imported ${result.imported} quotations${result.errors > 0 ? `. ${result.errors} errors occurred.` : ''}`,
-      });
+      setLoading(true);
+      try {
+        toast({
+          title: "Import started",
+          description: "Reading and importing quotations from JSON file...",
+        });
 
-      // Refresh the data
-      await handleRefreshData();
-    } catch (error: any) {
-      console.error('Import error:', error);
-      toast({
-        title: "Import failed",
-        description: error.message || "An error occurred during import",
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
+        const text = await file.text();
+        const jsonData = JSON.parse(text);
+
+        const result = await importQuotationsFromJSON(jsonData);
+        
+        toast({
+          title: "Import complete",
+          description: `Successfully imported ${result.imported} quotations${result.errors > 0 ? `. ${result.errors} errors occurred.` : ''}`,
+        });
+
+        // Refresh the data
+        await handleRefreshData();
+      } catch (error: any) {
+        console.error('Import error:', error);
+        toast({
+          title: "Import failed",
+          description: error.message || "An error occurred during import",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
+    input.click();
   };
 
   const handleEditQuotation = (quotation: Quotation) => {
@@ -658,7 +671,7 @@ const Index = () => {
               className="bg-gradient-to-r from-brand-gold to-yellow-500 text-white hover:from-brand-gold/90 hover:to-yellow-500/90"
             >
               <Download className="w-4 h-4 mr-2" />
-              Import 2119 Records
+              Import JSON File
             </Button>
             <Button 
               onClick={handleRefreshData}
