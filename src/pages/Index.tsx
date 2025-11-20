@@ -305,12 +305,23 @@ const Index = () => {
   // Calculate statistics for filtered quotations
   const stats = useMemo(() => {
     const totalAmount = filteredQuotations.reduce((sum, q) => {
-      const amount = parseFloat(q["TOTAL AMOUNT"].replace(/,/g, ""));
+      const amountStr = (q["TOTAL AMOUNT"] || "").toString().trim();
+      // Skip empty, null, or invalid values like "-"
+      if (!amountStr || amountStr === "-" || amountStr === "0" || amountStr === "0.00") {
+        return sum;
+      }
+      // Remove commas and parse
+      const amount = parseFloat(amountStr.replace(/,/g, ""));
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0);
 
-    const invoicedCount = filteredQuotations.filter((q) => q.STATUS === "INVOICED").length;
-    const regretCount = filteredQuotations.filter((q) => q.STATUS === "REGRET").length;
+    const invoicedCount = filteredQuotations.filter((q) => 
+      q.STATUS && q.STATUS.toUpperCase() === "INVOICED"
+    ).length;
+    
+    const regretCount = filteredQuotations.filter((q) => 
+      q.STATUS && q.STATUS.toUpperCase() === "REGRET"
+    ).length;
 
     return {
       totalQuotations: filteredQuotations.length,
