@@ -434,44 +434,47 @@ const Index = () => {
   };
 
   const handleImportData = async () => {
-    // Prompt user to upload the JSON file
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+    setLoading(true);
+    try {
+      toast({
+        title: "Import started",
+        description: "Importing all 2119 quotations from file...",
+      });
 
-      setLoading(true);
-      try {
-        toast({
-          title: "Import started",
-          description: "Reading and importing quotations from JSON file...",
-        });
-
-        const text = await file.text();
-        const jsonData = JSON.parse(text);
-
-        const result = await importQuotationsFromJSON(jsonData);
-        
-        toast({
-          title: "Import complete",
-          description: `Successfully imported ${result.imported} quotations${result.errors > 0 ? `. ${result.errors} errors occurred.` : ''}`,
-        });
-
-        // Refresh the data
-        await handleRefreshData();
-      } catch (error: any) {
-        console.error('Import error:', error);
-        toast({
-          title: "Import failed",
-          description: error.message || "An error occurred during import",
-          variant: "destructive",
-        });
-        setLoading(false);
+      // Fetch the JSON file from public folder
+      const response = await fetch('/data/quotations-import.json');
+      if (!response.ok) {
+        throw new Error('Failed to load quotation data file');
       }
-    };
-    input.click();
+      
+      const jsonData = await response.json();
+      const quotations = jsonData.quotations;
+
+      if (!quotations || quotations.length === 0) {
+        throw new Error('No quotations found in file');
+      }
+
+      console.log(`Found ${quotations.length} quotations to import`);
+
+      // Import using edge function
+      const result = await importQuotationsFromJSON(jsonData);
+      
+      toast({
+        title: "Import complete",
+        description: `Successfully imported ${result.imported} of ${quotations.length} quotations${result.errors > 0 ? ` (${result.errors} errors)` : ''}`,
+      });
+
+      // Refresh the data
+      await handleRefreshData();
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast({
+        title: "Import failed",
+        description: error.message || "An error occurred during import",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
   };
 
   const handleEditQuotation = (quotation: Quotation) => {
@@ -591,9 +594,10 @@ const Index = () => {
               onClick={handleImportData}
               variant="default"
               className="bg-gradient-to-r from-brand-gold to-yellow-500 text-white hover:from-brand-gold/90 hover:to-yellow-500/90"
+              disabled={loading}
             >
               <Download className="w-4 h-4 mr-2" />
-              Import JSON File
+              {loading ? 'Importing...' : 'Import All 2119 Records'}
             </Button>
             <Button 
               onClick={handleRefreshData}
