@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown, RefreshCw } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
+import { importQuotationsFromJSON } from "@/utils/importQuotations";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -510,6 +511,34 @@ const Index = () => {
     }
   };
 
+  const handleImportData = async () => {
+    setLoading(true);
+    try {
+      toast({
+        title: "Import started",
+        description: "Importing 2119 quotations from JSON file...",
+      });
+
+      const result = await importQuotationsFromJSON();
+      
+      toast({
+        title: "Import complete",
+        description: `Successfully imported ${result.imported} quotations${result.errors > 0 ? `. ${result.errors} errors occurred.` : ''}`,
+      });
+
+      // Refresh the data
+      await handleRefreshData();
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast({
+        title: "Import failed",
+        description: error.message || "An error occurred during import",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
+  };
+
   const handleEditQuotation = (quotation: Quotation) => {
     setEditingQuotation(quotation);
     setEditDialogOpen(true);
@@ -623,6 +652,14 @@ const Index = () => {
           </div>
           <div className="flex flex-wrap gap-3">
             <AddQuotationDialog onAdd={handleAddQuotation} />
+            <Button 
+              onClick={handleImportData}
+              variant="default"
+              className="bg-gradient-to-r from-brand-gold to-yellow-500 text-white hover:from-brand-gold/90 hover:to-yellow-500/90"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Import 2119 Records
+            </Button>
             <Button 
               onClick={handleRefreshData}
               variant="outline"
