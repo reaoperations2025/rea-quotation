@@ -326,7 +326,7 @@ const Index = () => {
   // Calculate statistics from current quotations data
   const stats = useMemo(() => {
     // Use filtered quotations if filters are active, otherwise use all quotations
-    const dataToUse = (
+    const hasActiveFilters = 
       filters.client !== "all" ||
       filters.status !== "all" ||
       filters.salesPerson !== "all" ||
@@ -336,8 +336,11 @@ const Index = () => {
       filters.invoiceNo !== "" ||
       filters.dateFrom !== "" ||
       filters.dateTo !== "" ||
-      searchQuery !== ""
-    ) ? filteredQuotations : quotations;
+      searchQuery !== "";
+    
+    const dataToUse = hasActiveFilters ? filteredQuotations : quotations;
+
+    console.log(`📊 Calculating stats from ${dataToUse.length} quotations (filters active: ${hasActiveFilters})`);
 
     const totalAmount = dataToUse.reduce((sum, q) => {
       const amountStr = (q["TOTAL AMOUNT"] || "").toString().trim();
@@ -358,12 +361,16 @@ const Index = () => {
       q.STATUS && q.STATUS.toUpperCase() === "REGRET"
     ).length;
 
-    return {
+    const calculatedStats = {
       totalQuotations: dataToUse.length,
       totalAmount,
       invoicedCount,
       regretCount,
     };
+
+    console.log('✅ Stats calculated:', calculatedStats);
+
+    return calculatedStats;
   }, [quotations, filteredQuotations, filters, searchQuery]);
 
   const handleFilterChange = (key: string, value: string) => {
