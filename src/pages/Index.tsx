@@ -25,12 +25,6 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [dbStats, setDbStats] = useState({
-    totalQuotations: 0,
-    totalAmount: 0,
-    invoicedCount: 0,
-    regretCount: 0,
-  });
   const [filters, setFilters] = useState({
     client: "all",
     status: "all",
@@ -46,31 +40,6 @@ const Index = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState("date-newest");
   const itemsPerPage = 10000; // Show all quotations
-
-  // Fetch statistics directly from database
-  const fetchDatabaseStats = async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_quotation_stats');
-      
-      if (error) {
-        console.error('Error fetching stats from RPC:', error);
-        throw error;
-      }
-      
-      if (data && data.length > 0) {
-        const stats = {
-          totalQuotations: Number(data[0].total_records) || 0,
-          totalAmount: Number(data[0].total_amount) || 0,
-          invoicedCount: Number(data[0].invoiced_count) || 0,
-          regretCount: Number(data[0].regret_count) || 0,
-        };
-        console.log('Database stats loaded:', stats);
-        setDbStats(stats);
-      }
-    } catch (error) {
-      console.error('Failed to fetch database stats:', error);
-    }
-  };
 
   // Check authentication and load quotations
   useEffect(() => {
@@ -144,9 +113,6 @@ const Index = () => {
         }));
         setQuotations(formattedQuotations);
       }
-      
-      // Fetch accurate statistics from database
-      await fetchDatabaseStats();
       
       setLoading(false);
     };
@@ -357,11 +323,25 @@ const Index = () => {
     }
   }, [filteredQuotations, sortBy]);
 
-  // Calculate statistics for filtered quotations (matches database logic exactly)
-  const filteredStats = useMemo(() => {
-    const totalAmount = filteredQuotations.reduce((sum, q) => {
+  // Calculate statistics from current quotations data
+  const stats = useMemo(() => {
+    // Use filtered quotations if filters are active, otherwise use all quotations
+    const dataToUse = (
+      filters.client !== "all" ||
+      filters.status !== "all" ||
+      filters.salesPerson !== "all" ||
+      filters.newOld !== "all" ||
+      filters.year !== "all" ||
+      filters.quotationNo !== "" ||
+      filters.invoiceNo !== "" ||
+      filters.dateFrom !== "" ||
+      filters.dateTo !== "" ||
+      searchQuery !== ""
+    ) ? filteredQuotations : quotations;
+
+    const totalAmount = dataToUse.reduce((sum, q) => {
       const amountStr = (q["TOTAL AMOUNT"] || "").toString().trim();
-      // Match database logic: skip null, empty, or "-" values
+      // Skip null, empty, or "-" values
       if (!amountStr || amountStr === "" || amountStr === "-") return sum;
       // Remove commas and parse as float
       const cleanStr = amountStr.replace(/,/g, "");
@@ -370,46 +350,21 @@ const Index = () => {
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0);
 
-    const invoicedCount = filteredQuotations.filter((q) => 
+    const invoicedCount = dataToUse.filter((q) => 
       q.STATUS && q.STATUS.toUpperCase() === "INVOICED"
     ).length;
     
-    const regretCount = filteredQuotations.filter((q) => 
+    const regretCount = dataToUse.filter((q) => 
       q.STATUS && q.STATUS.toUpperCase() === "REGRET"
     ).length;
 
-    const stats = {
-      totalQuotations: filteredQuotations.length,
+    return {
+      totalQuotations: dataToUse.length,
       totalAmount,
       invoicedCount,
       regretCount,
     };
-    
-    console.log('Filtered stats calculated:', stats, 'from', filteredQuotations.length, 'quotations');
-    
-    return stats;
-  }, [filteredQuotations]);
-
-  // Use database stats if no filters are active, otherwise use filtered stats
-  const hasActiveFilters = 
-    filters.client !== "all" ||
-    filters.status !== "all" ||
-    filters.salesPerson !== "all" ||
-    filters.newOld !== "all" ||
-    filters.year !== "all" ||
-    filters.quotationNo !== "" ||
-    filters.invoiceNo !== "" ||
-    filters.dateFrom !== "" ||
-    filters.dateTo !== "" ||
-    searchQuery !== "";
-
-  const stats = hasActiveFilters ? filteredStats : dbStats;
-  
-  console.log('Stats display:', {
-    hasActiveFilters,
-    usingStats: hasActiveFilters ? 'filtered' : 'database',
-    stats
-  });
+  }, [quotations, filteredQuotations, filters, searchQuery]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
