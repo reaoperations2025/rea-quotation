@@ -1,11 +1,24 @@
 import { supabase } from "@/integrations/supabase/client";
 import quotationsData from "../../public/data/quotations-import.json";
 
+let isFixing = false; // Prevent multiple simultaneous runs
+
 // Auto-fix data to match source file exactly
 export async function autoFixData() {
+  // Prevent multiple simultaneous runs
+  if (isFixing) {
+    console.log('Data fix already in progress, skipping...');
+    return;
+  }
+
   try {
+    isFixing = true;
+    
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!session) {
+      isFixing = false;
+      return;
+    }
 
     // Get current count
     const { count: currentCount } = await supabase
@@ -16,24 +29,26 @@ export async function autoFixData() {
     
     // If counts match, assume data is in sync
     if (currentCount === sourceCount) {
-      console.log(`✓ Database has ${currentCount} quotations matching source file`);
+      console.log(`✓ Database already has ${currentCount} quotations matching source file`);
+      isFixing = false;
       return;
     }
 
     console.log(`Database has ${currentCount} quotations but source has ${sourceCount}. Syncing...`);
     
-    // Delete all existing quotations for this user
+    // Delete ALL quotations (not just for this user, to ensure clean state)
     const { error: deleteError } = await supabase
       .from('quotations')
       .delete()
-      .eq('user_id', session.user.id);
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
     
     if (deleteError) {
       console.error('Delete error:', deleteError);
+      isFixing = false;
       return;
     }
 
-    console.log('Cleared existing data. Importing fresh data from source...');
+    console.log('✓ Cleared all existing data. Importing fresh data from source...');
     
     // Format date helper
     const formatDate = (dateStr: string): string => {
@@ -86,17 +101,18 @@ export async function autoFixData() {
         .select();
       
       if (error) {
-        console.error('Import error:', error);
+        console.error('Import batch error:', error);
         continue;
       }
       
       imported += data.length;
-      console.log(`Imported batch ${Math.floor(i / batchSize) + 1}: ${data.length} records (${imported}/${sourceCount})`);
     }
     
-    console.log(`✓ Successfully imported ${imported} quotations from source file`);
+    console.log(`✓ Successfully imported ${imported} quotations from source file (expected ${sourceCount})`);
+    isFixing = false;
     
   } catch (error) {
     console.error("Auto-fix failed:", error);
+    isFixing = false;
   }
 }
