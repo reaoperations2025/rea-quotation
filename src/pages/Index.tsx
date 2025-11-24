@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown, RefreshCw } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
 import { importQuotationsFromJSON } from "@/utils/importQuotations";
-import { fixQuotationsData } from "@/utils/fixQuotationsData";
+import { autoFixData } from "@/utils/autoFixData";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -50,6 +50,9 @@ const Index = () => {
         navigate("/auth");
         return;
       }
+
+      // Auto-fix missing data
+      await autoFixData();
 
       console.log('Loading all quotations...');
       
@@ -531,34 +534,6 @@ const Index = () => {
     }
   };
 
-  const handleFixData = async () => {
-    setLoading(true);
-    try {
-      toast({
-        title: "Fixing Data",
-        description: "Checking for missing quotations in the database...",
-      });
-      
-      const result = await fixQuotationsData();
-      
-      toast({
-        title: "Success",
-        description: result.message,
-      });
-      
-      // Refresh the data after fixing
-      await handleRefreshData();
-    } catch (error: any) {
-      console.error('Fix failed:', error);
-      toast({
-        variant: "destructive",
-        title: "Fix Failed",
-        description: error.message || "Failed to fix data",
-      });
-      setLoading(false);
-    }
-  };
-
   const handleEditQuotation = (quotation: Quotation) => {
     setEditingQuotation(quotation);
     setEditDialogOpen(true);
@@ -672,15 +647,6 @@ const Index = () => {
           </div>
           <div className="flex flex-wrap gap-3">
             <AddQuotationDialog onAdd={handleAddQuotation} />
-            <Button 
-              onClick={handleFixData}
-              variant="outline"
-              className="border-brand-teal text-brand-teal hover:bg-brand-teal hover:text-white"
-              disabled={loading}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Fix Missing Data
-            </Button>
             <Button 
               onClick={handleRefreshData}
               variant="outline"
