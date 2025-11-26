@@ -25,7 +25,11 @@ export async function autoFixData() {
       .from('quotations')
       .select('*', { count: 'exact', head: true });
 
-    const sourceCount = quotationsData.quotations.length;
+    // Filter out empty entries before counting
+    const validQuotations = quotationsData.quotations.filter(
+      (q: any) => q["QUOTATION NO"] && q["QUOTATION NO"].toString().trim() !== ""
+    );
+    const sourceCount = validQuotations.length;
     
     // If counts match, assume data is in sync
     if (currentCount === sourceCount) {
@@ -72,12 +76,12 @@ export async function autoFixData() {
       }
     };
     
-    // Import all quotations from source in batches
+    // Import all valid quotations from source in batches
     const batchSize = 100;
     let imported = 0;
     
-    for (let i = 0; i < quotationsData.quotations.length; i += batchSize) {
-      const batch = quotationsData.quotations.slice(i, i + batchSize);
+    for (let i = 0; i < validQuotations.length; i += batchSize) {
+      const batch = validQuotations.slice(i, i + batchSize);
       
       const transformedBatch = batch.map((q: any) => ({
         user_id: session.user.id,
