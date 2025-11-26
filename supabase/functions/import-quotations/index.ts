@@ -108,9 +108,14 @@ serve(async (req) => {
         status: q["STATUS"] || "PENDING"
       }));
 
+      // Use upsert to update existing records and add new ones
+      // This preserves user-added entries and updates old data
       const { data, error } = await supabase
         .from('quotations')
-        .insert(transformedBatch)
+        .upsert(transformedBatch, { 
+          onConflict: 'quotation_no,user_id',
+          ignoreDuplicates: false 
+        })
         .select();
 
       if (error) {
