@@ -51,8 +51,8 @@ const Index = () => {
         return;
       }
 
-      // Auto-fix missing data
-      await autoFixData();
+      // DISABLED: autoFixData() was deleting all manual changes
+      // await autoFixData();
 
       console.log('Loading all quotations...');
       
