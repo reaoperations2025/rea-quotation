@@ -80,15 +80,15 @@ const Index = () => {
           return;
         }
 
-        if (data && data.length > 0) {
+        if (data) {
           allQuotations = [...allQuotations, ...data];
-          console.log(`Loaded batch: ${data.length} records (total so far: ${allQuotations.length}/${count})`);
+          console.log(`Loaded batch: ${data.length} records (total so far: ${allQuotations.length}/${count || 0})`);
           
-          // Check if we've loaded all records
-          if (allQuotations.length >= (count || 0)) {
-            hasMore = false;
-          } else {
+          // Continue if this batch was full (indicating there might be more)
+          if (data.length === batchSize && allQuotations.length < (count || 0)) {
             from += batchSize;
+          } else {
+            hasMore = false;
           }
         } else {
           hasMore = false;
@@ -327,24 +327,11 @@ const Index = () => {
     }
   }, [filteredQuotations, sortBy]);
 
-  // Calculate statistics from current quotations data
+  // Calculate statistics - ALWAYS use sortedQuotations (which are already filtered)
   const stats = useMemo(() => {
-    // Use filtered quotations if filters are active, otherwise use all quotations
-    const hasActiveFilters = 
-      filters.client !== "all" ||
-      filters.status !== "all" ||
-      filters.salesPerson !== "all" ||
-      filters.newOld !== "all" ||
-      filters.year !== "all" ||
-      filters.quotationNo !== "" ||
-      filters.invoiceNo !== "" ||
-      filters.dateFrom !== "" ||
-      filters.dateTo !== "" ||
-      searchQuery !== "";
-    
-    const dataToUse = hasActiveFilters ? filteredQuotations : quotations;
+    const dataToUse = sortedQuotations;
 
-    console.log(`📊 Calculating stats from ${dataToUse.length} quotations (filters active: ${hasActiveFilters})`);
+    console.log(`📊 Calculating stats from ${dataToUse.length} quotations out of ${quotations.length} total`);
 
     const totalAmount = dataToUse.reduce((sum, q) => {
       const amountStr = (q["TOTAL AMOUNT"] || "").toString().trim();
@@ -375,7 +362,7 @@ const Index = () => {
     console.log('✅ Stats calculated:', calculatedStats);
 
     return calculatedStats;
-  }, [quotations, filteredQuotations, filters, searchQuery]);
+  }, [sortedQuotations, quotations.length]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
