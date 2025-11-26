@@ -12,7 +12,7 @@ import { Quotation } from "@/types/quotation";
 import quotationsData from "@/data/quotations-import.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown, RefreshCw } from "lucide-react";
+import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown } from "lucide-react";
 import { exportToExcel, exportToPDF, exportClientsToExcel } from "@/utils/exportUtils";
 import { importQuotationsFromJSON } from "@/utils/importQuotations";
 import { autoFixData } from "@/utils/autoFixData";
@@ -461,51 +461,6 @@ const Index = () => {
     }
   };
 
-  const handleRefreshData = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('quotations')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10000);
-
-      if (error) throw error;
-
-      const formattedQuotations: Quotation[] = data.map(q => ({
-        "QUOTATION NO": q.quotation_no,
-        "QUOTATION DATE": q.quotation_date,
-        "CLIENT": q.client,
-        "NEW/OLD": q.new_old,
-        "DESCRIPTION 1": q.description_1 || "",
-        "DESCRIPTION 2": q.description_2 || "",
-        "QTY": q.qty || "",
-        "UNIT COST": q.unit_cost || "",
-        "TOTAL AMOUNT": q.total_amount || "",
-        "SALES  PERSON": q.sales_person || "",
-        "INVOICE NO": q.invoice_no || "",
-        "STATUS": q.status,
-      }));
-      
-      setQuotations(formattedQuotations);
-      console.log('Data refreshed. Total quotations:', formattedQuotations.length);
-      
-      toast({
-        title: "Data Refreshed",
-        description: `Loaded ${formattedQuotations.length} quotations`,
-      });
-    } catch (error: any) {
-      console.error('Error refreshing data:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to refresh data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleImportData = async () => {
     setLoading(true);
     try {
@@ -536,9 +491,6 @@ const Index = () => {
         title: "Import complete",
         description: `Successfully imported ${result.imported} of ${quotations.length} quotations${result.errors > 0 ? ` (${result.errors} errors)` : ''}`,
       });
-
-      // Refresh the data
-      await handleRefreshData();
     } catch (error: any) {
       console.error('Import error:', error);
       toast({
@@ -546,6 +498,7 @@ const Index = () => {
         description: error.message || "An error occurred during import",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -672,14 +625,6 @@ const Index = () => {
           </div>
           <div className="flex flex-wrap gap-3">
             <AddQuotationDialog onAdd={handleAddQuotation} />
-            <Button 
-              onClick={handleRefreshData}
-              variant="outline"
-              className="border-primary text-primary hover:bg-primary hover:text-white"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Data
-            </Button>
             <Button 
               onClick={handleExportExcel}
               variant="outline"
