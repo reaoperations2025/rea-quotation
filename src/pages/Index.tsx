@@ -196,6 +196,46 @@ const Index = () => {
     };
   }, [navigate, toast]);
 
+  // Batch import PDFs on mount (one-time operation)
+  useEffect(() => {
+    const runBatchImport = async () => {
+      const { processBatchPDFs } = await import("@/utils/processBatchPDFs");
+      toast({
+        title: "Batch Import Started",
+        description: "Processing 10 PDF files...",
+      });
+      const result = await processBatchPDFs();
+      
+      if (result.errors.length === 0) {
+        toast({
+          title: "Batch Import Complete",
+          description: `Successfully imported ${result.results.length} quotations`,
+        });
+      } else {
+        toast({
+          title: "Batch Import Completed with Errors",
+          description: `Imported: ${result.results.length}, Failed: ${result.errors.length}`,
+          variant: "destructive",
+        });
+      }
+    };
+    
+    // Check if we need to run batch import
+    const hasRunBatchImport = localStorage.getItem('batch_import_2025_completed');
+    if (!hasRunBatchImport) {
+      runBatchImport().then(() => {
+        localStorage.setItem('batch_import_2025_completed', 'true');
+      }).catch(err => {
+        console.error('Batch import failed:', err);
+        toast({
+          title: "Batch Import Failed",
+          description: err.message,
+          variant: "destructive",
+        });
+      });
+    }
+  }, [toast]);
+
   // Get unique values for filters (excluding empty strings)
   const uniqueClients = useMemo(() => {
     return Array.from(new Set(quotations.map((q) => q.CLIENT).filter(c => c && c.trim() !== ""))).sort();
