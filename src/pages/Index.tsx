@@ -424,6 +424,9 @@ const Index = () => {
         title: "Success",
         description: `Quotation ${newQuotation["QUOTATION NO"]} saved to database`,
       });
+      
+      // Refresh the quotations list to show the new entry
+      await handleRefreshData();
     } catch (error: any) {
       console.error('Error saving quotation:', error);
       toast({
