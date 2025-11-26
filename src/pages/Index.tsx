@@ -13,7 +13,7 @@ import quotationsData from "@/data/quotations-import.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown, RefreshCw } from "lucide-react";
-import { exportToExcel, exportToPDF } from "@/utils/exportUtils";
+import { exportToExcel, exportToPDF, exportClientsToExcel } from "@/utils/exportUtils";
 import { importQuotationsFromJSON } from "@/utils/importQuotations";
 import { autoFixData } from "@/utils/autoFixData";
 import { useToast } from "@/hooks/use-toast";
@@ -320,8 +320,10 @@ const Index = () => {
         return sorted.sort((a, b) => b.CLIENT.localeCompare(a.CLIENT));
       case "status":
         return sorted.sort((a, b) => a.STATUS.localeCompare(b.STATUS));
-      case "quotation-no":
+      case "quotation-no-asc":
         return sorted.sort((a, b) => a["QUOTATION NO"].localeCompare(b["QUOTATION NO"]));
+      case "quotation-no-desc":
+        return sorted.sort((a, b) => b["QUOTATION NO"].localeCompare(a["QUOTATION NO"]));
       default:
         return sorted;
     }
@@ -611,6 +613,15 @@ const Index = () => {
     });
   };
 
+  const handleExportClients = () => {
+    exportClientsToExcel(quotations, 'rea_clients');
+    const uniqueClientsCount = new Set(quotations.map(q => q.CLIENT).filter(c => c && c.trim() !== '')).size;
+    toast({
+      title: "Export Successful",
+      description: `Exported ${uniqueClientsCount} unique clients to Excel.`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -658,6 +669,14 @@ const Index = () => {
               <FileText className="w-4 h-4 mr-2" />
               Export PDF
             </Button>
+            <Button 
+              onClick={handleExportClients}
+              variant="outline"
+              className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
+            >
+              <FileSpreadsheet className="w-4 h-4 mr-2" />
+              Export Clients
+            </Button>
           </div>
         </div>
 
@@ -704,7 +723,8 @@ const Index = () => {
               <SelectItem value="amount-lowest">Amount (Lowest First)</SelectItem>
               <SelectItem value="client-az">Client (A-Z)</SelectItem>
               <SelectItem value="client-za">Client (Z-A)</SelectItem>
-              <SelectItem value="quotation-no">Quotation Number</SelectItem>
+              <SelectItem value="quotation-no-asc">Quotation No (Ascending)</SelectItem>
+              <SelectItem value="quotation-no-desc">Quotation No (Descending)</SelectItem>
               <SelectItem value="status">Status</SelectItem>
             </SelectContent>
           </Select>
