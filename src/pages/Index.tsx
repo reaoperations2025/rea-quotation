@@ -390,9 +390,11 @@ const Index = () => {
   const handleAddQuotation = async (newQuotation: Quotation) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
 
-      console.log('Adding quotation:', newQuotation["QUOTATION NO"]);
+      console.log('Adding quotation to database:', newQuotation["QUOTATION NO"], newQuotation.CLIENT);
       
       const { data, error } = await supabase
         .from('quotations')
@@ -402,36 +404,58 @@ const Index = () => {
           quotation_date: newQuotation["QUOTATION DATE"],
           client: newQuotation.CLIENT,
           new_old: newQuotation["NEW/OLD"],
-          description_1: newQuotation["DESCRIPTION 1"],
-          description_2: newQuotation["DESCRIPTION 2"],
-          qty: newQuotation.QTY,
-          unit_cost: newQuotation["UNIT COST"],
-          total_amount: newQuotation["TOTAL AMOUNT"],
-          sales_person: newQuotation["SALES  PERSON"],
-          invoice_no: newQuotation["INVOICE NO"],
+          description_1: newQuotation["DESCRIPTION 1"] || "",
+          description_2: newQuotation["DESCRIPTION 2"] || "",
+          qty: newQuotation.QTY || "",
+          unit_cost: newQuotation["UNIT COST"] || "",
+          total_amount: newQuotation["TOTAL AMOUNT"] || "",
+          sales_person: newQuotation["SALES  PERSON"] || "",
+          invoice_no: newQuotation["INVOICE NO"] || "",
           status: newQuotation.STATUS,
         })
-        .select();
+        .select()
+        .single();
 
       if (error) {
-        console.error('Database error:', error);
+        console.error('Database insert error:', error);
         throw error;
       }
 
-      console.log('Quotation saved successfully:', data);
+      if (!data) {
+        throw new Error("No data returned from insert");
+      }
+
+      console.log('✓ Quotation saved successfully to database:', data.quotation_no);
+      
+      // Add the new quotation to the local state immediately
+      const formattedQuotation: Quotation = {
+        "QUOTATION NO": data.quotation_no,
+        "QUOTATION DATE": data.quotation_date,
+        "CLIENT": data.client,
+        "NEW/OLD": data.new_old,
+        "DESCRIPTION 1": data.description_1 || "",
+        "DESCRIPTION 2": data.description_2 || "",
+        "QTY": data.qty || "",
+        "UNIT COST": data.unit_cost || "",
+        "TOTAL AMOUNT": data.total_amount || "",
+        "SALES  PERSON": data.sales_person || "",
+        "INVOICE NO": data.invoice_no || "",
+        "STATUS": data.status,
+      };
+      
+      setQuotations(prev => [formattedQuotation, ...prev]);
       
       toast({
         title: "Success",
-        description: `Quotation ${newQuotation["QUOTATION NO"]} saved to database`,
+        description: `Quotation ${newQuotation["QUOTATION NO"]} for ${newQuotation.CLIENT} has been saved`,
       });
       
-      // Refresh the quotations list to show the new entry
-      await handleRefreshData();
+      console.log('✓ Added to local state. Total quotations:', quotations.length + 1);
     } catch (error: any) {
       console.error('Error saving quotation:', error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to save quotation",
+        title: "Failed to Save",
+        description: error.message || "Could not save quotation to database",
         variant: "destructive",
       });
     }
