@@ -3,6 +3,31 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Quotation } from '@/types/quotation';
 
+export const exportClientsToExcel = (quotations: Quotation[], filename: string = 'clients') => {
+  // Get unique clients from quotations
+  const uniqueClients = Array.from(
+    new Set(quotations.map(q => q.CLIENT).filter(c => c && c.trim() !== ''))
+  ).sort();
+  
+  // Create data array with client names
+  const clientData = uniqueClients.map((client, index) => ({
+    'No.': index + 1,
+    'Client Name': client,
+  }));
+  
+  const worksheet = XLSX.utils.json_to_sheet(clientData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Clients');
+  
+  // Set column widths
+  worksheet['!cols'] = [
+    { wch: 8 },  // No.
+    { wch: 50 }, // Client Name
+  ];
+  
+  XLSX.writeFile(workbook, `${filename}_${new Date().toISOString().split('T')[0]}.xlsx`);
+};
+
 export const exportToExcel = (data: Quotation[], filename: string = 'quotations') => {
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
