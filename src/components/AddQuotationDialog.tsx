@@ -19,7 +19,7 @@ interface LineItem {
 }
 
 interface AddQuotationDialogProps {
-  onAdd: (quotation: Quotation) => void;
+  onAdd: (quotation: Quotation) => Promise<void>;
 }
 
 export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
@@ -86,7 +86,7 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
     }, 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData["QUOTATION NO"] || !formData.CLIENT || !formData["QUOTATION DATE"]) {
@@ -116,13 +116,10 @@ export const AddQuotationDialog = ({ onAdd }: AddQuotationDialogProps) => {
       "TOTAL AMOUNT": totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     };
 
-    onAdd(quotation);
-    toast({
-      title: "Quotation Added",
-      description: `Quotation ${formData["QUOTATION NO"]} with ${lineItems.length} item(s) has been added successfully.`,
-    });
+    console.log('Submitting quotation:', quotation["QUOTATION NO"], quotation.CLIENT);
+    await onAdd(quotation);
     
-    // Reset form
+    // Reset form after successful save
     setFormData({
       "QUOTATION NO": "",
       "QUOTATION DATE": "",
