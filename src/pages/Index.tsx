@@ -626,6 +626,15 @@ const Index = () => {
           <div className="flex flex-wrap gap-3">
             <AddQuotationDialog onAdd={handleAddQuotation} />
             <Button 
+              onClick={handleImportData}
+              variant="default"
+              disabled={loading}
+              className="bg-brand-blue hover:bg-brand-blue/90"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {loading ? "Syncing..." : "Sync Database"}
+            </Button>
+            <Button 
               onClick={handleExportExcel}
               variant="outline"
               className="border-success text-success hover:bg-success hover:text-white"
