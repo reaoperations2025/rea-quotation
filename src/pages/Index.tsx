@@ -466,35 +466,55 @@ const Index = () => {
     try {
       toast({
         title: "Import started",
-        description: "Importing all 2119 quotations from file...",
+        description: "Importing quotations from Excel file...",
       });
 
-      // Fetch the JSON file from public folder
-      const response = await fetch('/data/quotations-import.json');
+      // Fetch the Excel file from public folder
+      const response = await fetch('/data/quotations-import.xlsx');
       if (!response.ok) {
-        throw new Error('Failed to load quotation data file');
+        throw new Error('Failed to load Excel file');
       }
       
-      const jsonData = await response.json();
-      const quotations = jsonData.quotations;
-
-      if (!quotations || quotations.length === 0) {
-        throw new Error('No quotations found in file');
+      const arrayBuffer = await response.arrayBuffer();
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+      
+      // Parse the Excel data - skip header row
+      const quotationsList = [];
+      for (let i = 1; i < rawData.length; i++) {
+        const row = rawData[i];
+        if (!row[0] || String(row[0]).trim() === '') continue; // Skip empty rows
+        
+        quotationsList.push({
+          quotation_no: String(row[0] || '').trim(),
+          quotation_date: String(row[1] || '').trim(),
+          client: String(row[2] || '').trim(),
+          description_1: String(row[3] || '').trim(),
+          total_amount: String(row[4] || '').trim(),
+          sales_person: String(row[5] || '').trim(),
+          status: String(row[6] || 'PENDING').trim()
+        });
       }
 
-      console.log(`Found ${quotations.length} quotations to import`);
+      console.log(`Found ${quotationsList.length} quotations to import`);
 
       // Import using edge function
-      const result = await importQuotationsFromJSON(jsonData);
+      const result = await importQuotationsFromJSON({ quotations: quotationsList });
       
       toast({
         title: "Import complete",
-        description: `Successfully imported ${result.imported} of ${quotations.length} quotations${result.errors > 0 ? ` (${result.errors} errors)` : ''}`,
+        description: `Successfully imported ${result.imported} quotations${result.errors > 0 ? ` (${result.errors} errors)` : ''}`,
       });
+      
+      // Reload the page to get fresh data
+      window.location.reload();
     } catch (error: any) {
       console.error('Import error:', error);
       toast({
-        title: "Import failed",
+        title: "Error",
         description: error.message || "An error occurred during import",
         variant: "destructive",
       });
