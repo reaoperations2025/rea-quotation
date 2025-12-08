@@ -55,7 +55,7 @@ export type Database = {
           total_amount: string | null
           unit_cost: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           client: string
@@ -73,7 +73,7 @@ export type Database = {
           total_amount?: string | null
           unit_cost?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           client?: string
@@ -91,7 +91,7 @@ export type Database = {
           total_amount?: string | null
           unit_cost?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
