@@ -53,7 +53,7 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   let totalSum = 0;
   const statusCounts: Record<string, number> = {};
 
-  // Convert to database format
+  // Convert to database format - NO user_id for shared data
   const dbRecords = quotations.map(q => {
     // Parse total amount - remove commas and whitespace
     let totalAmount = "0.00";
@@ -71,7 +71,6 @@ export async function directImportFromExcel(): Promise<ImportResult> {
     statusCounts[status] = (statusCounts[status] || 0) + 1;
 
     return {
-      user_id: user.id,
       quotation_no: q["QUOTATION NO"].toString().trim(),
       quotation_date: q["QUOTATION DATE"] || '',
       client: q.CLIENT || '',
@@ -90,7 +89,7 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   console.log('Total amount sum:', totalSum.toFixed(2));
   console.log('Status distribution:', statusCounts);
 
-  // Batch insert to Supabase
+  // Batch insert to Supabase - using quotation_no only for conflict
   const batchSize = 100;
   let successCount = 0;
   let errorCount = 0;
@@ -100,8 +99,8 @@ export async function directImportFromExcel(): Promise<ImportResult> {
 
     const { data, error } = await supabase
       .from('quotations')
-      .upsert(batch, {
-        onConflict: 'quotation_no,user_id',
+      .upsert(batch as any, {
+        onConflict: 'quotation_no',
         ignoreDuplicates: false
       })
       .select();
