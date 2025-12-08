@@ -1,0 +1,44 @@
+[
+  {
+    "QUOTATION NO": "24-0001",
+    "QUOTATION DATE": "02-Jan-24",
+    "CLIENT": "Lycee Francais Jean Mermoz School",
+    "NEW/OLD": "OLD",
+    "DESCRIPTION 1": "Security Cabin Branding",
+    "DESCRIPTION 2": null,
+    "QTY": null,
+    "UNIT COST": null,
+    "TOTAL AMOUNT": 650.00,
+    "SALES  PERSON": "REENA",
+    "INVOICE NO": null,
+    "STATUS": "REGRET"
+  },
+  {
+    "QUOTATION NO": "24-0002",
+    "QUOTATION DATE": "02-Jan-24",
+    "CLIENT": "GF Corys",
+    "NEW/OLD": "OLD",
+    "DESCRIPTION 1": "Business Card",
+    "DESCRIPTION 2": null,
+    "QTY": null,
+    "UNIT COST": null,
+    "TOTAL AMOUNT": 1995.00,
+    "SALES  PERSON": "MARINELLE",
+    "INVOICE NO": null,
+    "STATUS": "REGRET"
+  },
+  {
+    "QUOTATION NO": "24-0003",
+    "QUOTATION DATE": "02-Jan-24",
+    "CLIENT": "Murdoch University",
+    "NEW/OLD": "OLD",
+    "DESCRIPTION 1": "Round neck Tshirt",
+    "DESCRIPTION 2": null,
+    "QTY": null,
+    "UNIT COST": null,
+    "TOTAL AMOUNT": 380.00,
+    "SALES  PERSON": "REENA",
+    "INVOICE NO": null,
+    "STATUS": "INVOICED"
+  }
+]
