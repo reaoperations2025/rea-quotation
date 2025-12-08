@@ -50,26 +50,23 @@ export const QuotationTable = ({
       <div className="rounded-lg border bg-card">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Actions</TableHead>
-              <TableHead className="w-[120px]">Quotation No</TableHead>
-              <TableHead className="w-[120px]">Date</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead className="w-[80px]">Type</TableHead>
-              <TableHead>Description 1</TableHead>
-              <TableHead>Description 2</TableHead>
-              <TableHead className="w-[100px]">Qty</TableHead>
-              <TableHead className="w-[120px]">Unit Cost (AED)</TableHead>
-              <TableHead className="w-[120px]">Total Amount (AED)</TableHead>
-              <TableHead className="w-[120px]">Sales Person</TableHead>
-              <TableHead className="w-[120px]">Invoice No</TableHead>
-              <TableHead className="w-[100px]">Status</TableHead>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-[80px]">Actions</TableHead>
+              <TableHead className="w-[110px]">Quotation No</TableHead>
+              <TableHead className="w-[100px]">Date</TableHead>
+              <TableHead className="min-w-[180px]">Client</TableHead>
+              <TableHead className="w-[70px]">Type</TableHead>
+              <TableHead className="min-w-[200px]">Description</TableHead>
+              <TableHead className="w-[130px] text-right">Amount (AED)</TableHead>
+              <TableHead className="w-[110px]">Sales Person</TableHead>
+              <TableHead className="w-[100px]">Invoice No</TableHead>
+              <TableHead className="w-[90px]">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {currentQuotations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   No quotations found
                 </TableCell>
               </TableRow>
@@ -82,7 +79,7 @@ export const QuotationTable = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => onEdit(quotation)}
-                        className="h-8 w-8 p-0 hover:bg-brand-teal hover:text-white"
+                        className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -96,27 +93,29 @@ export const QuotationTable = ({
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{quotation["QUOTATION NO"]}</TableCell>
-                  <TableCell>{quotation["QUOTATION DATE"]}</TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={quotation["CLIENT"]}>
+                  <TableCell className="font-medium text-primary">{quotation["QUOTATION NO"]}</TableCell>
+                  <TableCell className="text-muted-foreground">{quotation["QUOTATION DATE"]}</TableCell>
+                  <TableCell className="font-medium" title={quotation["CLIENT"]}>
                     {quotation["CLIENT"]}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={quotation["NEW/OLD"] === "NEW" ? "default" : "secondary"}>
+                    <Badge variant={quotation["NEW/OLD"] === "NEW" ? "default" : "secondary"} className="text-xs">
                       {quotation["NEW/OLD"]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={quotation["DESCRIPTION 1"]}>
-                    {quotation["DESCRIPTION 1"]}
+                  <TableCell title={`${quotation["DESCRIPTION 1"]}${quotation["DESCRIPTION 2"] ? ` - ${quotation["DESCRIPTION 2"]}` : ''}`}>
+                    <div className="max-w-[250px]">
+                      <span className="block truncate">{quotation["DESCRIPTION 1"]}</span>
+                      {quotation["DESCRIPTION 2"] && (
+                        <span className="block text-xs text-muted-foreground truncate">{quotation["DESCRIPTION 2"]}</span>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate" title={quotation["DESCRIPTION 2"]}>
-                    {quotation["DESCRIPTION 2"]}
+                  <TableCell className="text-right font-semibold text-success">
+                    {formatAmount(quotation["TOTAL AMOUNT"])}
                   </TableCell>
-                  <TableCell>{quotation["QTY"]}</TableCell>
-                  <TableCell className="text-right">{formatAmount(quotation["UNIT COST"])}</TableCell>
-                  <TableCell className="text-right font-medium">{formatAmount(quotation["TOTAL AMOUNT"])}</TableCell>
                   <TableCell>{quotation["SALES  PERSON"]}</TableCell>
-                  <TableCell>{quotation["INVOICE NO"] || "-"}</TableCell>
+                  <TableCell className="text-muted-foreground">{quotation["INVOICE NO"] || "-"}</TableCell>
                   <TableCell>{getStatusBadge(quotation["STATUS"])}</TableCell>
                 </TableRow>
               ))
