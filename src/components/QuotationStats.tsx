@@ -1,11 +1,13 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, XCircle, Coins } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { CheckCircle, XCircle, Coins, Clock, FileText } from "lucide-react";
 
 interface QuotationStatsProps {
   totalQuotations: number;
   totalAmount: number;
   invoicedCount: number;
   regretCount: number;
+  openCount?: number;
+  pendingCount?: number;
 }
 
 export const QuotationStats = ({
@@ -13,39 +15,78 @@ export const QuotationStats = ({
   totalAmount,
   invoicedCount,
   regretCount,
+  openCount = 0,
+  pendingCount = 0,
 }: QuotationStatsProps) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-      <Card className="border-l-4 border-l-brand-blue shadow-md hover:shadow-lg transition-shadow">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Amount (AED)</CardTitle>
-          <Coins className="h-5 w-5 text-brand-blue" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-brand-blue">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      {/* Total Amount - Primary Card */}
+      <Card className="col-span-2 md:col-span-1 lg:col-span-1 border-l-4 border-l-brand-blue bg-gradient-to-br from-brand-blue/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Amount</span>
+            <Coins className="h-4 w-4 text-brand-blue" />
+          </div>
+          <div className="text-2xl font-bold text-brand-blue">
             {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">United Arab Emirates Dirham</p>
+          <p className="text-[10px] text-muted-foreground mt-1">AED • {totalQuotations} records</p>
         </CardContent>
       </Card>
 
-      <Card className="border-l-4 border-l-success shadow-md hover:shadow-lg transition-shadow">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Invoiced</CardTitle>
-          <CheckCircle className="h-5 w-5 text-success" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-success">{invoicedCount}</div>
+      {/* Invoiced */}
+      <Card className="border-l-4 border-l-success bg-gradient-to-br from-success/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Invoiced</span>
+            <CheckCircle className="h-4 w-4 text-success" />
+          </div>
+          <div className="text-2xl font-bold text-success">{invoicedCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {totalQuotations > 0 ? ((invoicedCount / totalQuotations) * 100).toFixed(1) : 0}% of total
+          </p>
         </CardContent>
       </Card>
 
-      <Card className="border-l-4 border-l-destructive shadow-md hover:shadow-lg transition-shadow">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Regret</CardTitle>
-          <XCircle className="h-5 w-5 text-destructive" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-destructive">{regretCount}</div>
+      {/* Open */}
+      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open</span>
+            <Clock className="h-4 w-4 text-blue-500" />
+          </div>
+          <div className="text-2xl font-bold text-blue-500">{openCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {totalQuotations > 0 ? ((openCount / totalQuotations) * 100).toFixed(1) : 0}% of total
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Pending */}
+      <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending</span>
+            <FileText className="h-4 w-4 text-amber-500" />
+          </div>
+          <div className="text-2xl font-bold text-amber-500">{pendingCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {totalQuotations > 0 ? ((pendingCount / totalQuotations) * 100).toFixed(1) : 0}% of total
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Regret */}
+      <Card className="border-l-4 border-l-destructive bg-gradient-to-br from-destructive/5 to-transparent shadow-sm hover:shadow-md transition-all">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Regret</span>
+            <XCircle className="h-4 w-4 text-destructive" />
+          </div>
+          <div className="text-2xl font-bold text-destructive">{regretCount}</div>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {totalQuotations > 0 ? ((regretCount / totalQuotations) * 100).toFixed(1) : 0}% of total
+          </p>
         </CardContent>
       </Card>
     </div>

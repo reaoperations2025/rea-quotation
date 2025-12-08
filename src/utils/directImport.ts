@@ -1,92 +1,101 @@
 import { supabase } from "@/integrations/supabase/client";
 
-interface QuotationData {
-  "QUOTATION NO": string;
-  "QUOTATION DATE ": string;
-  "CLIENT": string;
-  "NEW/OLD": string;
-  "DESCRIPTION 1": string;
-  "DESCRIPTION 2": string | null;
-  "QTY": string | number | null;
-  "UNIT COST": string | number | null;
-  "TOTAL AMOUNT": string | number | null;
-  "SALES  PERSON": string | null;
-  "INVOICE NO": string | null;
-  "STATUS": string | null;
+interface ImportResult {
+  success: boolean;
+  imported: number;
+  errors: number;
+  message: string;
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return new Date().toISOString().split('T')[0];
+export async function directImportFromExcel(): Promise<ImportResult> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+
+  // Fetch the Excel file
+  const response = await fetch('/data/quotations-import.xlsx');
+  if (!response.ok) {
+    throw new Error('Failed to load Excel file');
+  }
   
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return new Date().toISOString().split('T')[0];
-    }
+  const arrayBuffer = await response.arrayBuffer();
+  const XLSX = await import('xlsx');
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const sheetName = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[sheetName];
+  
+  // Read with header option to get column names
+  const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+  
+  console.log('Excel headers:', rawData[0]);
+  console.log('First data row:', rawData[1]);
+  
+  // Parse and deduplicate - keep last occurrence of each quotation_no
+  const quotationMap = new Map<string, any>();
+  
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i];
+    const quotationNo = String(row[0] || '').trim();
     
-    const day = String(date.getDate()).padStart(2, '0');
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[date.getMonth()];
-    const year = String(date.getFullYear()).slice(-2);
+    // Skip empty rows
+    if (!quotationNo) continue;
     
-    return `${day}-${month}-${year}`;
-  } catch {
-    return new Date().toISOString().split('T')[0];
+    // Map columns: 0=QUOTATION NO, 1=QUOTATION DATE, 2=CLIENT, 3=DESCRIPTION 1, 4=TOTAL AMOUNT, 5=SALES PERSON, 6=STATUS
+    quotationMap.set(quotationNo, {
+      user_id: user.id,
+      quotation_no: quotationNo,
+      quotation_date: String(row[1] || '').trim(),
+      client: String(row[2] || '').trim(),
+      new_old: "OLD",
+      description_1: String(row[3] || '').trim(),
+      description_2: "",
+      qty: "",
+      unit_cost: "",
+      total_amount: String(row[4] || '').trim(),
+      sales_person: String(row[5] || '').trim(),
+      invoice_no: "",
+      status: String(row[6] || 'PENDING').trim().toUpperCase()
+    });
   }
-}
-
-export async function directImportQuotations(quotations: QuotationData[]) {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
-
-    console.log(`Starting direct import of ${quotations.length} quotations...`);
-
-    const batchSize = 100;
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (let i = 0; i < quotations.length; i += batchSize) {
-      const batch = quotations.slice(i, i + batchSize);
-      
-      const transformedBatch = batch.map(q => ({
-        user_id: user.id,
-        quotation_no: q["QUOTATION NO"] || "",
-        quotation_date: formatDate(q["QUOTATION DATE "]),
-        client: (q["CLIENT"] || "").trim(),
-        new_old: q["NEW/OLD"] || "",
-        description_1: q["DESCRIPTION 1"] || "",
-        description_2: q["DESCRIPTION 2"] || "",
-        qty: q["QTY"]?.toString() || "",
-        unit_cost: q["UNIT COST"]?.toString() || "",
-        total_amount: q["TOTAL AMOUNT"]?.toString() || "",
-        sales_person: q["SALES  PERSON"] || "",
-        invoice_no: q["INVOICE NO"] || "",
-        status: q["STATUS"] || "PENDING"
-      }));
-
-      const { data, error } = await supabase
-        .from('quotations')
-        .insert(transformedBatch)
-        .select();
-
-      if (error) {
-        console.error(`Error inserting batch ${i / batchSize + 1}:`, error);
-        errorCount += batch.length;
-      } else {
-        successCount += data.length;
-        console.log(`Imported batch ${i / batchSize + 1}: ${data.length} records (${successCount}/${quotations.length})`);
-      }
-    }
-
-    console.log(`Import completed: ${successCount} success, ${errorCount} errors`);
-    return { success: true, imported: successCount, errors: errorCount };
+  
+  const quotations = Array.from(quotationMap.values());
+  console.log(`Parsed ${quotations.length} unique quotations from Excel`);
+  
+  // Validate some data
+  const sampleWithAmount = quotations.filter(q => q.total_amount && !isNaN(parseFloat(q.total_amount.replace(/,/g, ''))));
+  console.log(`${sampleWithAmount.length} quotations have valid amounts`);
+  console.log('Sample quotation:', quotations[0]);
+  
+  // Batch insert directly to Supabase
+  const batchSize = 100;
+  let successCount = 0;
+  let errorCount = 0;
+  
+  for (let i = 0; i < quotations.length; i += batchSize) {
+    const batch = quotations.slice(i, i + batchSize);
     
-  } catch (error) {
-    console.error("Import failed:", error);
-    throw error;
+    const { data, error } = await supabase
+      .from('quotations')
+      .upsert(batch, { 
+        onConflict: 'quotation_no,user_id',
+        ignoreDuplicates: false 
+      })
+      .select();
+    
+    if (error) {
+      console.error(`Batch ${Math.floor(i/batchSize) + 1} error:`, error);
+      errorCount += batch.length;
+    } else {
+      successCount += data?.length || 0;
+      console.log(`Batch ${Math.floor(i/batchSize) + 1}: ${data?.length || 0} records`);
+    }
   }
+  
+  return {
+    success: errorCount === 0,
+    imported: successCount,
+    errors: errorCount,
+    message: `Imported ${successCount} quotations${errorCount > 0 ? ` (${errorCount} errors)` : ''}`
+  };
 }
