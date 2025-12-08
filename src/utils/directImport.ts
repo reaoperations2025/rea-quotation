@@ -7,27 +7,19 @@ interface ImportResult {
   message: string;
 }
 
-// Convert Excel serial date to DD-MMM-YY format
-function excelDateToString(excelDate: any): string {
-  if (!excelDate) return "";
-  
-  // If already a string in correct format, return it
-  if (typeof excelDate === 'string' && excelDate.includes('-')) {
-    return excelDate;
-  }
-  
-  // If it's a number (Excel serial date)
-  if (typeof excelDate === 'number') {
-    // Excel dates are days since Dec 30, 1899
-    const date = new Date((excelDate - 25569) * 86400 * 1000);
-    const day = String(date.getDate()).padStart(2, '0');
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[date.getMonth()];
-    const year = String(date.getFullYear()).slice(-2);
-    return `${day}-${month}-${year}`;
-  }
-  
-  return String(excelDate);
+interface QuotationData {
+  "QUOTATION NO": string;
+  "QUOTATION DATE": string;
+  "CLIENT": string;
+  "NEW/OLD": string;
+  "DESCRIPTION 1": string;
+  "DESCRIPTION 2": string | null;
+  "QTY": string | null;
+  "UNIT COST": string | null;
+  "TOTAL AMOUNT": number;
+  "SALES  PERSON": string;
+  "INVOICE NO": string | null;
+  "STATUS": string;
 }
 
 export async function directImportFromExcel(): Promise<ImportResult> {
@@ -36,7 +28,7 @@ export async function directImportFromExcel(): Promise<ImportResult> {
     throw new Error("Not authenticated");
   }
 
-  // Fetch the Excel file
+  // Fetch the Excel file and parse it to JSON
   const response = await fetch('/data/quotations-import.xlsx');
   if (!response.ok) {
     throw new Error('Failed to load Excel file');
@@ -48,109 +40,85 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   
-  // Read with header row to get named columns
-  const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+  // Read with header row
+  const rawData = XLSX.utils.sheet_to_json(worksheet) as any[];
   
-  console.log('Total rows from Excel:', jsonData.length);
-  console.log('First row keys:', Object.keys(jsonData[0] || {}));
-  console.log('First row data:', JSON.stringify(jsonData[0], null, 2));
+  console.log('Total rows from Excel:', rawData.length);
+  console.log('First row:', rawData[0]);
   
-  // Parse and deduplicate - keep last occurrence of each quotation_no
+  // Convert to proper format and deduplicate
   const quotationMap = new Map<string, any>();
   
-  for (const row of jsonData) {
-    // Log first row to debug column names
-    if (quotationMap.size === 0) {
-      console.log('DEBUG - All row keys:', Object.keys(row));
-      for (const key of Object.keys(row)) {
-        console.log(`  Key: "${key}" => Value: "${row[key]}"`);
-      }
-    }
-    
-    // Get column values by name - try multiple variations
-    const quotationNo = String(
-      row['QUOTATION NO'] || row['Quotation No'] || row['quotation_no'] || ''
-    ).trim();
-    
-    // Skip empty rows
+  for (const row of rawData) {
+    const quotationNo = String(row['QUOTATION NO'] || '').trim();
     if (!quotationNo) continue;
     
-    const quotationDate = excelDateToString(
-      row['QUOTATION DATE'] || row['Quotation Date'] || row['quotation_date'] || ''
-    );
-    const client = String(
-      row['CLIENT'] || row['Client'] || row['client'] || ''
-    ).trim();
-    const description1 = String(
-      row['DESCRIPTION 1'] || row['Description 1'] || row['description_1'] || ''
-    ).trim();
+    // Parse total amount - handle both number and string formats
+    let totalAmount = 0;
+    const rawAmount = row['TOTAL AMOUNT'];
+    if (typeof rawAmount === 'number') {
+      totalAmount = rawAmount;
+    } else if (typeof rawAmount === 'string') {
+      totalAmount = parseFloat(rawAmount.replace(/,/g, '')) || 0;
+    }
     
-    // Try all possible column name variations for total amount
-    const totalAmount = String(
-      row['TOTAL AMOUNT'] || 
-      row['Total Amount'] || 
-      row['total_amount'] || 
-      row['TOTAL  AMOUNT'] ||  // double space
-      row['Amount'] ||
-      ''
-    ).trim();
+    const quotation: QuotationData = {
+      "QUOTATION NO": quotationNo,
+      "QUOTATION DATE": String(row['QUOTATION DATE'] || '').trim(),
+      "CLIENT": String(row['CLIENT'] || '').trim(),
+      "NEW/OLD": "OLD",
+      "DESCRIPTION 1": String(row['DESCRIPTION 1'] || '').trim(),
+      "DESCRIPTION 2": null,
+      "QTY": null,
+      "UNIT COST": null,
+      "TOTAL AMOUNT": totalAmount,
+      "SALES  PERSON": String(row['SALES PERSON'] || row['SALES  PERSON'] || '').trim(),
+      "INVOICE NO": null,
+      "STATUS": String(row['STATUS'] || 'PENDING').trim().toUpperCase()
+    };
     
-    const salesPerson = String(
-      row['SALES PERSON'] || row['Sales Person'] || row['SALES  PERSON'] || row['sales_person'] || ''
-    ).trim();
-    const status = String(
-      row['STATUS'] || row['Status'] || row['status'] || 'PENDING'
-    ).trim().toUpperCase();
-    
-    console.log(`Row ${quotationMap.size + 1}: quotation_no=${quotationNo}, total_amount=${totalAmount}, status=${status}`);
-    
-    quotationMap.set(quotationNo, {
-      user_id: user.id,
-      quotation_no: quotationNo,
-      quotation_date: quotationDate,
-      client: client,
-      new_old: "OLD",
-      description_1: description1,
-      description_2: "",
-      qty: "",
-      unit_cost: "",
-      total_amount: totalAmount,
-      sales_person: salesPerson,
-      invoice_no: "",
-      status: status
-    });
+    quotationMap.set(quotationNo, quotation);
   }
   
   const quotations = Array.from(quotationMap.values());
-  console.log(`Parsed ${quotations.length} unique quotations from Excel`);
+  console.log(`Parsed ${quotations.length} unique quotations`);
   
-  // Validate sample data
-  console.log('Sample quotation after parsing:', quotations[0]);
-  console.log('Sample quotation 2:', quotations[1]);
+  // Calculate total for verification
+  const totalSum = quotations.reduce((sum, q) => sum + q["TOTAL AMOUNT"], 0);
+  console.log('Total amount sum:', totalSum.toFixed(2));
   
-  // Count by status to verify
+  // Count by status
   const statusCounts: Record<string, number> = {};
   quotations.forEach(q => {
-    const s = q.status || 'UNKNOWN';
+    const s = q.STATUS || 'UNKNOWN';
     statusCounts[s] = (statusCounts[s] || 0) + 1;
   });
   console.log('Status distribution:', statusCounts);
   
-  // Calculate total amount for verification
-  let totalAmountSum = 0;
-  quotations.forEach(q => {
-    const amt = parseFloat((q.total_amount || '').replace(/,/g, ''));
-    if (!isNaN(amt)) totalAmountSum += amt;
-  });
-  console.log('Total amount sum:', totalAmountSum.toFixed(2));
+  // Convert to database format
+  const dbRecords = quotations.map(q => ({
+    user_id: user.id,
+    quotation_no: q["QUOTATION NO"],
+    quotation_date: q["QUOTATION DATE"],
+    client: q.CLIENT,
+    new_old: q["NEW/OLD"],
+    description_1: q["DESCRIPTION 1"],
+    description_2: q["DESCRIPTION 2"] || "",
+    qty: q.QTY || "",
+    unit_cost: q["UNIT COST"] || "",
+    total_amount: q["TOTAL AMOUNT"].toFixed(2), // Store as formatted string
+    sales_person: q["SALES  PERSON"],
+    invoice_no: q["INVOICE NO"] || "",
+    status: q.STATUS
+  }));
   
-  // Batch insert directly to Supabase
+  // Batch insert to Supabase
   const batchSize = 100;
   let successCount = 0;
   let errorCount = 0;
   
-  for (let i = 0; i < quotations.length; i += batchSize) {
-    const batch = quotations.slice(i, i + batchSize);
+  for (let i = 0; i < dbRecords.length; i += batchSize) {
+    const batch = dbRecords.slice(i, i + batchSize);
     
     const { data, error } = await supabase
       .from('quotations')
@@ -173,6 +141,6 @@ export async function directImportFromExcel(): Promise<ImportResult> {
     success: errorCount === 0,
     imported: successCount,
     errors: errorCount,
-    message: `Imported ${successCount} quotations${errorCount > 0 ? ` (${errorCount} errors)` : ''}`
+    message: `Imported ${successCount} quotations (Total: ${totalSum.toLocaleString('en-US', { minimumFractionDigits: 2 })} AED)${errorCount > 0 ? ` (${errorCount} errors)` : ''}`
   };
 }
