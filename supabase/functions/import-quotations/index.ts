@@ -56,28 +56,39 @@ serve(async (req) => {
 
     console.log(`Starting import of ${quotations.length} quotations for user ${user.id}...`);
 
+    // DEDUPLICATE: Keep only the last occurrence of each quotation_no
+    const deduplicatedMap = new Map<string, QuotationData>();
+    for (const q of quotations) {
+      const key = (q.quotation_no || "").trim();
+      if (key) {
+        deduplicatedMap.set(key, q);
+      }
+    }
+    const uniqueQuotations = Array.from(deduplicatedMap.values());
+    console.log(`After deduplication: ${uniqueQuotations.length} unique quotations (removed ${quotations.length - uniqueQuotations.length} duplicates)`);
+
     // Batch insert in chunks of 100
     const batchSize = 100;
     let successCount = 0;
     let errorCount = 0;
 
-    for (let i = 0; i < quotations.length; i += batchSize) {
-      const batch = quotations.slice(i, i + batchSize);
+    for (let i = 0; i < uniqueQuotations.length; i += batchSize) {
+      const batch = uniqueQuotations.slice(i, i + batchSize);
       
       const transformedBatch = batch.map((q: QuotationData) => ({
         user_id: user.id,
-        quotation_no: q.quotation_no || "",
-        quotation_date: q.quotation_date || "",
+        quotation_no: (q.quotation_no || "").trim(),
+        quotation_date: (q.quotation_date || "").trim(),
         client: (q.client || "").trim(),
         new_old: "OLD",
-        description_1: q.description_1 || "",
+        description_1: (q.description_1 || "").trim(),
         description_2: "",
         qty: "",
         unit_cost: "",
-        total_amount: q.total_amount || "",
-        sales_person: q.sales_person || "",
+        total_amount: (q.total_amount || "").trim(),
+        sales_person: (q.sales_person || "").trim(),
         invoice_no: "",
-        status: q.status || "PENDING"
+        status: (q.status || "PENDING").trim().toUpperCase()
       }));
 
       // Use upsert to update existing records and add new ones
