@@ -7,41 +7,13 @@ const corsHeaders = {
 };
 
 interface QuotationData {
-  "QUOTATION NO": string;
-  "QUOTATION DATE ": string;
-  "CLIENT": string;
-  "NEW/OLD": string;
-  "DESCRIPTION 1": string;
-  "DESCRIPTION 2": string | null;
-  "QTY": string | number | null;
-  "UNIT COST": string | number | null;
-  "TOTAL AMOUNT": string | number | null;
-  "SALES  PERSON": string | null;
-  "INVOICE NO": string | null;
-  "STATUS": string | null;
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return new Date().toISOString().split('T')[0];
-  
-  try {
-    // Parse "2024-01-02 00:00:00" format
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) {
-      return new Date().toISOString().split('T')[0];
-    }
-    
-    // Format as DD-Mon-YY
-    const day = String(date.getDate()).padStart(2, '0');
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = monthNames[date.getMonth()];
-    const year = String(date.getFullYear()).slice(-2);
-    
-    return `${day}-${month}-${year}`;
-  } catch {
-    return new Date().toISOString().split('T')[0];
-  }
+  quotation_no: string;
+  quotation_date: string;
+  client: string;
+  description_1: string;
+  total_amount: string;
+  sales_person: string;
+  status: string;
 }
 
 serve(async (req) => {
@@ -94,22 +66,21 @@ serve(async (req) => {
       
       const transformedBatch = batch.map((q: QuotationData) => ({
         user_id: user.id,
-        quotation_no: q["QUOTATION NO"] || "",
-        quotation_date: formatDate(q["QUOTATION DATE "]),
-        client: (q["CLIENT"] || "").trim(),
-        new_old: q["NEW/OLD"] || "",
-        description_1: q["DESCRIPTION 1"] || "",
-        description_2: q["DESCRIPTION 2"] || "",
-        qty: q["QTY"]?.toString() || "",
-        unit_cost: q["UNIT COST"]?.toString() || "",
-        total_amount: q["TOTAL AMOUNT"]?.toString() || "",
-        sales_person: q["SALES  PERSON"] || "",
-        invoice_no: q["INVOICE NO"] || "",
-        status: q["STATUS"] || "PENDING"
+        quotation_no: q.quotation_no || "",
+        quotation_date: q.quotation_date || "",
+        client: (q.client || "").trim(),
+        new_old: "OLD",
+        description_1: q.description_1 || "",
+        description_2: "",
+        qty: "",
+        unit_cost: "",
+        total_amount: q.total_amount || "",
+        sales_person: q.sales_person || "",
+        invoice_no: "",
+        status: q.status || "PENDING"
       }));
 
       // Use upsert to update existing records and add new ones
-      // This preserves user-added entries and updates old data
       const { data, error } = await supabase
         .from('quotations')
         .upsert(transformedBatch, { 
