@@ -53,24 +53,56 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   
   console.log('Total rows from Excel:', jsonData.length);
   console.log('First row keys:', Object.keys(jsonData[0] || {}));
-  console.log('First row data:', jsonData[0]);
+  console.log('First row data:', JSON.stringify(jsonData[0], null, 2));
   
   // Parse and deduplicate - keep last occurrence of each quotation_no
   const quotationMap = new Map<string, any>();
   
   for (const row of jsonData) {
-    // Get column values by name (handle different possible column names)
-    const quotationNo = String(row['QUOTATION NO'] || row['Quotation No'] || '').trim();
+    // Log first row to debug column names
+    if (quotationMap.size === 0) {
+      console.log('DEBUG - All row keys:', Object.keys(row));
+      for (const key of Object.keys(row)) {
+        console.log(`  Key: "${key}" => Value: "${row[key]}"`);
+      }
+    }
+    
+    // Get column values by name - try multiple variations
+    const quotationNo = String(
+      row['QUOTATION NO'] || row['Quotation No'] || row['quotation_no'] || ''
+    ).trim();
     
     // Skip empty rows
     if (!quotationNo) continue;
     
-    const quotationDate = excelDateToString(row['QUOTATION DATE'] || row['Quotation Date'] || '');
-    const client = String(row['CLIENT'] || row['Client'] || '').trim();
-    const description1 = String(row['DESCRIPTION 1'] || row['Description 1'] || '').trim();
-    const totalAmount = String(row['TOTAL AMOUNT'] || row['Total Amount'] || '').trim();
-    const salesPerson = String(row['SALES PERSON'] || row['Sales Person'] || '').trim();
-    const status = String(row['STATUS'] || row['Status'] || 'PENDING').trim().toUpperCase();
+    const quotationDate = excelDateToString(
+      row['QUOTATION DATE'] || row['Quotation Date'] || row['quotation_date'] || ''
+    );
+    const client = String(
+      row['CLIENT'] || row['Client'] || row['client'] || ''
+    ).trim();
+    const description1 = String(
+      row['DESCRIPTION 1'] || row['Description 1'] || row['description_1'] || ''
+    ).trim();
+    
+    // Try all possible column name variations for total amount
+    const totalAmount = String(
+      row['TOTAL AMOUNT'] || 
+      row['Total Amount'] || 
+      row['total_amount'] || 
+      row['TOTAL  AMOUNT'] ||  // double space
+      row['Amount'] ||
+      ''
+    ).trim();
+    
+    const salesPerson = String(
+      row['SALES PERSON'] || row['Sales Person'] || row['SALES  PERSON'] || row['sales_person'] || ''
+    ).trim();
+    const status = String(
+      row['STATUS'] || row['Status'] || row['status'] || 'PENDING'
+    ).trim().toUpperCase();
+    
+    console.log(`Row ${quotationMap.size + 1}: quotation_no=${quotationNo}, total_amount=${totalAmount}, status=${status}`);
     
     quotationMap.set(quotationNo, {
       user_id: user.id,
