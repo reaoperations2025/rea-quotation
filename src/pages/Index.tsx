@@ -98,28 +98,7 @@ const Index = () => {
       // Clear localStorage - we only use database now
       localStorage.removeItem('quotations');
 
-      // If no data, auto-import from JSON file
-      if (allQuotations.length === 0) {
-        console.log('No data in database, auto-importing from JSON...');
-        try {
-          const result = await directImportFromExcel();
-          console.log('Auto-import complete:', result.message);
-          toast({
-            title: "Data Loaded",
-            description: result.message,
-          });
-          // Reload to get fresh data
-          window.location.reload();
-          return;
-        } catch (error: any) {
-          console.error('Auto-import failed:', error);
-          toast({
-            title: "Import Error",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
-      }
+      // Auto-import disabled - data already in database
 
       if (allQuotations.length > 0) {
         const formattedQuotations: Quotation[] = allQuotations.map(q => ({
