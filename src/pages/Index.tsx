@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown } from "lucide-react";
 import { exportToExcel, exportToPDF, exportClientsToExcel } from "@/utils/exportUtils";
-import { importQuotationsFromJSON } from "@/utils/importQuotations";
+import { directImportFromExcel } from "@/utils/directImport";
 import { autoFixData } from "@/utils/autoFixData";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -354,11 +354,21 @@ const Index = () => {
       q.STATUS && q.STATUS.toUpperCase() === "REGRET"
     ).length;
 
+    const openCount = dataToUse.filter((q) => 
+      q.STATUS && q.STATUS.toUpperCase() === "OPEN"
+    ).length;
+
+    const pendingCount = dataToUse.filter((q) => 
+      q.STATUS && q.STATUS.toUpperCase() === "PENDING"
+    ).length;
+
     const calculatedStats = {
       totalQuotations: dataToUse.length,
       totalAmount,
       invoicedCount,
       regretCount,
+      openCount,
+      pendingCount,
     };
 
     console.log('✅ Stats calculated:', calculatedStats);
@@ -469,44 +479,12 @@ const Index = () => {
         description: "Importing quotations from Excel file...",
       });
 
-      // Fetch the Excel file from public folder
-      const response = await fetch('/data/quotations-import.xlsx');
-      if (!response.ok) {
-        throw new Error('Failed to load Excel file');
-      }
-      
-      const arrayBuffer = await response.arrayBuffer();
-      const XLSX = await import('xlsx');
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
-      
-      // Parse the Excel data - skip header row
-      const quotationsList = [];
-      for (let i = 1; i < rawData.length; i++) {
-        const row = rawData[i];
-        if (!row[0] || String(row[0]).trim() === '') continue; // Skip empty rows
-        
-        quotationsList.push({
-          quotation_no: String(row[0] || '').trim(),
-          quotation_date: String(row[1] || '').trim(),
-          client: String(row[2] || '').trim(),
-          description_1: String(row[3] || '').trim(),
-          total_amount: String(row[4] || '').trim(),
-          sales_person: String(row[5] || '').trim(),
-          status: String(row[6] || 'PENDING').trim()
-        });
-      }
-
-      console.log(`Found ${quotationsList.length} quotations to import`);
-
-      // Import using edge function
-      const result = await importQuotationsFromJSON({ quotations: quotationsList });
+      // Direct import from Excel file
+      const result = await directImportFromExcel();
       
       toast({
         title: "Import complete",
-        description: `Successfully imported ${result.imported} quotations${result.errors > 0 ? ` (${result.errors} errors)` : ''}`,
+        description: result.message,
       });
       
       // Reload the page to get fresh data
@@ -699,6 +677,8 @@ const Index = () => {
           totalAmount={stats.totalAmount}
           invoicedCount={stats.invoicedCount}
           regretCount={stats.regretCount}
+          openCount={stats.openCount}
+          pendingCount={stats.pendingCount}
         />
 
         <QuotationFilters
