@@ -37,24 +37,20 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   const jsonData: QuotationJSON[] = await response.json();
   console.log(`Loaded ${jsonData.length} records from JSON file`);
 
-  // Filter out empty records and deduplicate
-  const quotationMap = new Map<string, QuotationJSON>();
-  
-  for (const row of jsonData) {
+  // Filter out empty records - DO NOT deduplicate to preserve all records with amounts
+  const validRecords = jsonData.filter(row => {
     const quotationNo = row["QUOTATION NO"]?.toString().trim();
-    if (!quotationNo) continue;
-    quotationMap.set(quotationNo, row);
-  }
-
-  const quotations = Array.from(quotationMap.values());
-  console.log(`Unique quotations: ${quotations.length}`);
+    return quotationNo && quotationNo !== '';
+  });
+  
+  console.log(`Valid records: ${validRecords.length}`);
 
   // Calculate total for verification
   let totalSum = 0;
   const statusCounts: Record<string, number> = {};
 
   // Convert to database format - NO user_id for shared data
-  const dbRecords = quotations.map(q => {
+  const dbRecords = validRecords.map(q => {
     // Parse total amount - remove commas and whitespace
     let totalAmount = "0.00";
     const rawAmount = q["TOTAL AMOUNT"];
@@ -89,7 +85,7 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   console.log('Total amount sum:', totalSum.toFixed(2));
   console.log('Status distribution:', statusCounts);
 
-  // Batch insert to Supabase - using quotation_no only for conflict
+  // Batch INSERT to Supabase - no unique constraint, insert all records
   const batchSize = 100;
   let successCount = 0;
   let errorCount = 0;
@@ -99,10 +95,7 @@ export async function directImportFromExcel(): Promise<ImportResult> {
 
     const { data, error } = await supabase
       .from('quotations')
-      .upsert(batch as any, {
-        onConflict: 'quotation_no',
-        ignoreDuplicates: false
-      })
+      .insert(batch as any)
       .select();
 
     if (error) {

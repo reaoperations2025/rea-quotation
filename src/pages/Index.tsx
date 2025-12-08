@@ -11,8 +11,9 @@ import { EditQuotationDialog } from "@/components/EditQuotationDialog";
 import { Quotation } from "@/types/quotation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, FileSpreadsheet, FileText, ArrowUpDown, Users, Wifi } from "lucide-react";
+import { Search, FileSpreadsheet, FileText, ArrowUpDown, Users, Wifi, RefreshCw } from "lucide-react";
 import { exportToExcel, exportToPDF, exportClientsToExcel } from "@/utils/exportUtils";
+import { directImportFromExcel } from "@/utils/directImport";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -96,6 +97,29 @@ const Index = () => {
       
       // Clear localStorage - we only use database now
       localStorage.removeItem('quotations');
+
+      // If no data, auto-import from JSON file
+      if (allQuotations.length === 0) {
+        console.log('No data in database, auto-importing from JSON...');
+        try {
+          const result = await directImportFromExcel();
+          console.log('Auto-import complete:', result.message);
+          toast({
+            title: "Data Loaded",
+            description: result.message,
+          });
+          // Reload to get fresh data
+          window.location.reload();
+          return;
+        } catch (error: any) {
+          console.error('Auto-import failed:', error);
+          toast({
+            title: "Import Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
+      }
 
       if (allQuotations.length > 0) {
         const formattedQuotations: Quotation[] = allQuotations.map(q => ({
