@@ -7,6 +7,29 @@ interface ImportResult {
   message: string;
 }
 
+// Convert Excel serial date to DD-MMM-YY format
+function excelDateToString(excelDate: any): string {
+  if (!excelDate) return "";
+  
+  // If already a string in correct format, return it
+  if (typeof excelDate === 'string' && excelDate.includes('-')) {
+    return excelDate;
+  }
+  
+  // If it's a number (Excel serial date)
+  if (typeof excelDate === 'number') {
+    // Excel dates are days since Dec 30, 1899
+    const date = new Date((excelDate - 25569) * 86400 * 1000);
+    const day = String(date.getDate()).padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  }
+  
+  return String(excelDate);
+}
+
 export async function directImportFromExcel(): Promise<ImportResult> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -25,47 +48,69 @@ export async function directImportFromExcel(): Promise<ImportResult> {
   const sheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[sheetName];
   
-  // Read with header option to get column names
-  const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+  // Read with header row to get named columns
+  const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
   
-  console.log('Excel headers:', rawData[0]);
-  console.log('First data row:', rawData[1]);
+  console.log('Total rows from Excel:', jsonData.length);
+  console.log('First row keys:', Object.keys(jsonData[0] || {}));
+  console.log('First row data:', jsonData[0]);
   
   // Parse and deduplicate - keep last occurrence of each quotation_no
   const quotationMap = new Map<string, any>();
   
-  for (let i = 1; i < rawData.length; i++) {
-    const row = rawData[i];
-    const quotationNo = String(row[0] || '').trim();
+  for (const row of jsonData) {
+    // Get column values by name (handle different possible column names)
+    const quotationNo = String(row['QUOTATION NO'] || row['Quotation No'] || '').trim();
     
     // Skip empty rows
     if (!quotationNo) continue;
     
-    // Map columns: 0=QUOTATION NO, 1=QUOTATION DATE, 2=CLIENT, 3=DESCRIPTION 1, 4=TOTAL AMOUNT, 5=SALES PERSON, 6=STATUS
+    const quotationDate = excelDateToString(row['QUOTATION DATE'] || row['Quotation Date'] || '');
+    const client = String(row['CLIENT'] || row['Client'] || '').trim();
+    const description1 = String(row['DESCRIPTION 1'] || row['Description 1'] || '').trim();
+    const totalAmount = String(row['TOTAL AMOUNT'] || row['Total Amount'] || '').trim();
+    const salesPerson = String(row['SALES PERSON'] || row['Sales Person'] || '').trim();
+    const status = String(row['STATUS'] || row['Status'] || 'PENDING').trim().toUpperCase();
+    
     quotationMap.set(quotationNo, {
       user_id: user.id,
       quotation_no: quotationNo,
-      quotation_date: String(row[1] || '').trim(),
-      client: String(row[2] || '').trim(),
+      quotation_date: quotationDate,
+      client: client,
       new_old: "OLD",
-      description_1: String(row[3] || '').trim(),
+      description_1: description1,
       description_2: "",
       qty: "",
       unit_cost: "",
-      total_amount: String(row[4] || '').trim(),
-      sales_person: String(row[5] || '').trim(),
+      total_amount: totalAmount,
+      sales_person: salesPerson,
       invoice_no: "",
-      status: String(row[6] || 'PENDING').trim().toUpperCase()
+      status: status
     });
   }
   
   const quotations = Array.from(quotationMap.values());
   console.log(`Parsed ${quotations.length} unique quotations from Excel`);
   
-  // Validate some data
-  const sampleWithAmount = quotations.filter(q => q.total_amount && !isNaN(parseFloat(q.total_amount.replace(/,/g, ''))));
-  console.log(`${sampleWithAmount.length} quotations have valid amounts`);
-  console.log('Sample quotation:', quotations[0]);
+  // Validate sample data
+  console.log('Sample quotation after parsing:', quotations[0]);
+  console.log('Sample quotation 2:', quotations[1]);
+  
+  // Count by status to verify
+  const statusCounts: Record<string, number> = {};
+  quotations.forEach(q => {
+    const s = q.status || 'UNKNOWN';
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+  console.log('Status distribution:', statusCounts);
+  
+  // Calculate total amount for verification
+  let totalAmountSum = 0;
+  quotations.forEach(q => {
+    const amt = parseFloat((q.total_amount || '').replace(/,/g, ''));
+    if (!isNaN(amt)) totalAmountSum += amt;
+  });
+  console.log('Total amount sum:', totalAmountSum.toFixed(2));
   
   // Batch insert directly to Supabase
   const batchSize = 100;
