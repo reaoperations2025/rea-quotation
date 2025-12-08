@@ -394,17 +394,11 @@ const Index = () => {
 
   const handleAddQuotation = async (newQuotation: Quotation) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Not authenticated");
-      }
-
       console.log('Adding quotation to database:', newQuotation["QUOTATION NO"], newQuotation.CLIENT);
       
       const { data, error } = await supabase
         .from('quotations')
         .insert({
-          user_id: user.id,
           quotation_no: newQuotation["QUOTATION NO"],
           quotation_date: newQuotation["QUOTATION DATE"],
           client: newQuotation.CLIENT,
@@ -417,7 +411,7 @@ const Index = () => {
           sales_person: newQuotation["SALES  PERSON"] || "",
           invoice_no: newQuotation["INVOICE NO"] || "",
           status: newQuotation.STATUS,
-        })
+        } as any)
         .select()
         .single();
 
@@ -432,30 +426,12 @@ const Index = () => {
 
       console.log('✓ Quotation saved successfully to database:', data.quotation_no);
       
-      // Add the new quotation to the local state immediately
-      const formattedQuotation: Quotation = {
-        "QUOTATION NO": data.quotation_no,
-        "QUOTATION DATE": data.quotation_date,
-        "CLIENT": data.client,
-        "NEW/OLD": data.new_old,
-        "DESCRIPTION 1": data.description_1 || "",
-        "DESCRIPTION 2": data.description_2 || "",
-        "QTY": data.qty || "",
-        "UNIT COST": data.unit_cost || "",
-        "TOTAL AMOUNT": data.total_amount || "",
-        "SALES  PERSON": data.sales_person || "",
-        "INVOICE NO": data.invoice_no || "",
-        "STATUS": data.status,
-      };
-      
-      setQuotations(prev => [formattedQuotation, ...prev]);
-      
       toast({
         title: "Success",
         description: `Quotation ${newQuotation["QUOTATION NO"]} for ${newQuotation.CLIENT} has been saved`,
       });
       
-      console.log('✓ Added to local state. Total quotations:', quotations.length + 1);
+      // Realtime subscription will handle adding to local state
     } catch (error: any) {
       console.error('Error saving quotation:', error);
       toast({
