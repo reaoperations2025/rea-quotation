@@ -9,13 +9,10 @@ import { QuotationTable } from "@/components/QuotationTable";
 import { AddQuotationDialog } from "@/components/AddQuotationDialog";
 import { EditQuotationDialog } from "@/components/EditQuotationDialog";
 import { Quotation } from "@/types/quotation";
-import quotationsData from "@/data/quotations-import.json";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Download, FileSpreadsheet, FileText, ArrowUpDown } from "lucide-react";
+import { Search, FileSpreadsheet, FileText, ArrowUpDown, Users, Wifi } from "lucide-react";
 import { exportToExcel, exportToPDF, exportClientsToExcel } from "@/utils/exportUtils";
-import { directImportFromExcel } from "@/utils/directImport";
-import { autoFixData } from "@/utils/autoFixData";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -442,36 +439,6 @@ const Index = () => {
     }
   };
 
-  const handleImportData = async () => {
-    setLoading(true);
-    try {
-      toast({
-        title: "Import started",
-        description: "Importing quotations from Excel file...",
-      });
-
-      // Direct import from Excel file
-      const result = await directImportFromExcel();
-      
-      toast({
-        title: "Import complete",
-        description: result.message,
-      });
-      
-      // Reload the page to get fresh data
-      window.location.reload();
-    } catch (error: any) {
-      console.error('Import error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "An error occurred during import",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleEditQuotation = (quotation: Quotation) => {
     setEditingQuotation(quotation);
     setEditDialogOpen(true);
@@ -586,63 +553,58 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex flex-col">
       <Header />
       
-      <div className="container mx-auto py-8 px-4 flex-1">
-        <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Quotation Management</h2>
-            <p className="text-muted-foreground">Track, manage, and export your quotations</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <AddQuotationDialog onAdd={handleAddQuotation} />
-            <Button 
-              onClick={handleImportData}
-              variant="default"
-              disabled={loading}
-              className="bg-brand-blue hover:bg-brand-blue/90"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {loading ? "Syncing..." : "Sync Database"}
-            </Button>
-            <Button 
-              onClick={handleExportExcel}
-              variant="outline"
-              className="border-success text-success hover:bg-success hover:text-white"
-            >
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Export Excel
-            </Button>
-            <Button 
-              onClick={handleExportPDF}
-              variant="outline"
-              className="border-destructive text-destructive hover:bg-destructive hover:text-white"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Export PDF
-            </Button>
-            <Button 
-              onClick={handleExportClients}
-              variant="outline"
-              className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
-            >
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Export Clients
-            </Button>
+      <div className="container mx-auto py-6 px-4 flex-1">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-1">Quotations</h1>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Wifi className="h-3 w-3 text-success animate-pulse" />
+                <span>Real-time sync enabled</span>
+                <span className="text-border">•</span>
+                <span>{quotations.length} total records</span>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <AddQuotationDialog onAdd={handleAddQuotation} />
+              
+              <div className="flex gap-2 border-l pl-2 ml-1">
+                <Button 
+                  onClick={handleExportExcel}
+                  variant="outline"
+                  size="sm"
+                  className="text-success border-success/30 hover:bg-success hover:text-white"
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+                  Excel
+                </Button>
+                <Button 
+                  onClick={handleExportPDF}
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive border-destructive/30 hover:bg-destructive hover:text-white"
+                >
+                  <FileText className="w-4 h-4 mr-1.5" />
+                  PDF
+                </Button>
+                <Button 
+                  onClick={handleExportClients}
+                  variant="outline"
+                  size="sm"
+                  className="text-purple-500 border-purple-500/30 hover:bg-purple-500 hover:text-white"
+                >
+                  <Users className="w-4 h-4 mr-1.5" />
+                  Clients
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="mb-6 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-          <Input
-            placeholder="Search across all fields..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-10 h-12 text-lg shadow-sm border-2 focus:border-brand-teal"
-          />
-        </div>
-
+        {/* Stats Cards */}
         <QuotationStats
           totalQuotations={stats.totalQuotations}
           totalAmount={stats.totalAmount}
@@ -651,6 +613,21 @@ const Index = () => {
           openCount={stats.openCount}
         />
 
+        {/* Search Bar */}
+        <div className="mb-6 relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+          <Input
+            placeholder="Search quotations by client, description, status..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-12 h-12 text-base shadow-sm border-2 focus:border-primary rounded-xl bg-card"
+          />
+        </div>
+
+        {/* Filters */}
         <QuotationFilters
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -660,25 +637,32 @@ const Index = () => {
           uniqueSalesPeople={uniqueSalesPeople}
         />
 
-        <div className="mt-6 mb-4 flex items-center gap-3">
-          <ArrowUpDown className="h-5 w-5 text-muted-foreground" />
-          <label className="text-sm font-medium text-foreground">Sort by:</label>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="date-newest">Date (Newest First)</SelectItem>
-              <SelectItem value="date-oldest">Date (Oldest First)</SelectItem>
-              <SelectItem value="amount-highest">Amount (Highest First)</SelectItem>
-              <SelectItem value="amount-lowest">Amount (Lowest First)</SelectItem>
-              <SelectItem value="client-az">Client (A-Z)</SelectItem>
-              <SelectItem value="client-za">Client (Z-A)</SelectItem>
-              <SelectItem value="quotation-no-asc">Quotation No (Ascending)</SelectItem>
-              <SelectItem value="quotation-no-desc">Quotation No (Descending)</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Sort & Table */}
+        <div className="mt-6 mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Sort:</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px] h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-newest">Date (Newest)</SelectItem>
+                <SelectItem value="date-oldest">Date (Oldest)</SelectItem>
+                <SelectItem value="amount-highest">Amount (High → Low)</SelectItem>
+                <SelectItem value="amount-lowest">Amount (Low → High)</SelectItem>
+                <SelectItem value="client-az">Client (A → Z)</SelectItem>
+                <SelectItem value="client-za">Client (Z → A)</SelectItem>
+                <SelectItem value="quotation-no-asc">Quote # (Ascending)</SelectItem>
+                <SelectItem value="quotation-no-desc">Quote # (Descending)</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{sortedQuotations.length}</span> quotations
+          </p>
         </div>
 
         <div className="mt-6">
