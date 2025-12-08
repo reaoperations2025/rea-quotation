@@ -358,17 +358,12 @@ const Index = () => {
       q.STATUS && q.STATUS.toUpperCase() === "OPEN"
     ).length;
 
-    const pendingCount = dataToUse.filter((q) => 
-      q.STATUS && q.STATUS.toUpperCase() === "PENDING"
-    ).length;
-
     const calculatedStats = {
       totalQuotations: dataToUse.length,
       totalAmount,
       invoicedCount,
       regretCount,
       openCount,
-      pendingCount,
     };
 
     console.log('✅ Stats calculated:', calculatedStats);
@@ -678,7 +673,6 @@ const Index = () => {
           invoicedCount={stats.invoicedCount}
           regretCount={stats.regretCount}
           openCount={stats.openCount}
-          pendingCount={stats.pendingCount}
         />
 
         <QuotationFilters

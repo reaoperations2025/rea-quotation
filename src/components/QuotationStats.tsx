@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, XCircle, Coins, Clock, FileText } from "lucide-react";
+import { CheckCircle, XCircle, Coins, Clock } from "lucide-react";
 
 interface QuotationStatsProps {
   totalQuotations: number;
@@ -7,7 +7,6 @@ interface QuotationStatsProps {
   invoicedCount: number;
   regretCount: number;
   openCount?: number;
-  pendingCount?: number;
 }
 
 export const QuotationStats = ({
@@ -16,21 +15,20 @@ export const QuotationStats = ({
   invoicedCount,
   regretCount,
   openCount = 0,
-  pendingCount = 0,
 }: QuotationStatsProps) => {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-      {/* Total Amount - Primary Card */}
-      <Card className="col-span-2 md:col-span-1 lg:col-span-1 border-l-4 border-l-brand-blue bg-gradient-to-br from-brand-blue/5 to-transparent shadow-sm hover:shadow-md transition-all">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* Total Quoted Amount */}
+      <Card className="col-span-2 md:col-span-1 border-l-4 border-l-brand-blue bg-gradient-to-br from-brand-blue/5 to-transparent shadow-sm hover:shadow-md transition-all">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Amount</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Quoted</span>
             <Coins className="h-4 w-4 text-brand-blue" />
           </div>
           <div className="text-2xl font-bold text-brand-blue">
             {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
-          <p className="text-[10px] text-muted-foreground mt-1">AED • {totalQuotations} records</p>
+          <p className="text-[10px] text-muted-foreground mt-1">AED • {totalQuotations} quotations</p>
         </CardContent>
       </Card>
 
@@ -58,20 +56,6 @@ export const QuotationStats = ({
           <div className="text-2xl font-bold text-blue-500">{openCount}</div>
           <p className="text-[10px] text-muted-foreground mt-1">
             {totalQuotations > 0 ? ((openCount / totalQuotations) * 100).toFixed(1) : 0}% of total
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Pending */}
-      <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-500/5 to-transparent shadow-sm hover:shadow-md transition-all">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending</span>
-            <FileText className="h-4 w-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-bold text-amber-500">{pendingCount}</div>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {totalQuotations > 0 ? ((pendingCount / totalQuotations) * 100).toFixed(1) : 0}% of total
           </p>
         </CardContent>
       </Card>
