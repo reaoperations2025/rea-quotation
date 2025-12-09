@@ -9,17 +9,18 @@ interface ImportResult {
 
 interface QuotationJSON {
   "QUOTATION NO": string;
-  "QUOTATION DATE": string;
+  "QUOTATION DATE"?: string;
+  "QUOTATION DATE "?: string; // Handle old format with trailing space
   "CLIENT": string;
-  "NEW/OLD": string;
-  "DESCRIPTION 1": string | null;
-  "DESCRIPTION 2": string | null;
-  "QTY": string | null;
-  "UNIT COST": string | null;
-  "TOTAL AMOUNT": string | null;
-  "SALES  PERSON": string | null;
+  "NEW/OLD"?: string;
+  "DESCRIPTION 1"?: string | null;
+  "DESCRIPTION 2"?: string | null;
+  "QTY"?: string | null;
+  "UNIT COST"?: string | null;
+  "TOTAL AMOUNT"?: string | null;
+  "SALES  PERSON"?: string | null;
   "INVOICE NO"?: string | null;
-  "STATUS": string;
+  "STATUS"?: string;
 }
 
 export async function directImportFromExcel(): Promise<ImportResult> {
@@ -66,9 +67,12 @@ export async function directImportFromExcel(): Promise<ImportResult> {
     const status = (q.STATUS || 'PENDING').toUpperCase();
     statusCounts[status] = (statusCounts[status] || 0) + 1;
 
+    // Handle both old format (QUOTATION DATE ) and new format (QUOTATION DATE)
+    const quotationDate = q["QUOTATION DATE"] || q["QUOTATION DATE "] || '';
+    
     return {
       quotation_no: q["QUOTATION NO"].toString().trim(),
-      quotation_date: q["QUOTATION DATE"] || '',
+      quotation_date: quotationDate,
       client: q.CLIENT || '',
       new_old: q["NEW/OLD"] || 'OLD',
       description_1: q["DESCRIPTION 1"] || null,

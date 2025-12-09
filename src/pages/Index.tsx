@@ -11,7 +11,7 @@ import { EditQuotationDialog } from "@/components/EditQuotationDialog";
 import { Quotation } from "@/types/quotation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, FileSpreadsheet, FileText, ArrowUpDown, Users, Wifi, RefreshCw } from "lucide-react";
+import { Search, FileSpreadsheet, FileText, ArrowUpDown, Users, Wifi, Upload } from "lucide-react";
 import { exportToExcel, exportToPDF, exportClientsToExcel } from "@/utils/exportUtils";
 import { directImportFromExcel } from "@/utils/directImport";
 import { useToast } from "@/hooks/use-toast";
@@ -541,6 +541,32 @@ const Index = () => {
     });
   };
 
+  const handleImportData = async () => {
+    try {
+      toast({
+        title: "Importing Data...",
+        description: "Please wait while data is being imported.",
+      });
+      
+      const result = await directImportFromExcel();
+      
+      toast({
+        title: result.success ? "Import Complete" : "Import Partial",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+      
+      // Reload to get fresh data
+      window.location.reload();
+    } catch (error: any) {
+      toast({
+        title: "Import Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -573,6 +599,19 @@ const Index = () => {
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2">
               <AddQuotationDialog onAdd={handleAddQuotation} />
+              
+              {/* Temporary Import Button - Remove after data is imported */}
+              {quotations.length < 1500 && (
+                <Button 
+                  onClick={handleImportData}
+                  variant="outline"
+                  size="sm"
+                  className="text-orange-500 border-orange-500/30 hover:bg-orange-500 hover:text-white"
+                >
+                  <Upload className="w-4 h-4 mr-1.5" />
+                  Import Data
+                </Button>
+              )}
               
               <div className="flex gap-2 border-l pl-2 ml-1">
                 <Button 
